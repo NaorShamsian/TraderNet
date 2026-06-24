@@ -9,16 +9,29 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StatusBar as RNStatusBar,
 } from "react-native";
 import API from "../api";
 
-const Register = ({ navigateToLogin }) => {
+const Register = ({ navigateToLogin, theme, isDarkMode }) => {
+  const colors = theme || {
+    bg: isDarkMode ? "#0b0f19" : "#f8fafc",
+    cardBg: isDarkMode ? "#151c2c" : "#ffffff",
+    text: isDarkMode ? "#f3f4f6" : "#0f172a",
+    subText: isDarkMode ? "#9ca3af" : "#64748b",
+    border: isDarkMode ? "rgba(255, 255, 255, 0.08)" : "rgba(15, 23, 42, 0.08)",
+    inputBg: isDarkMode ? "#1f293d" : "#f1f5f9",
+    inputText: isDarkMode ? "#f3f4f6" : "#0f172a",
+    primary: "#6366f1",
+  };
+
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
     username: "",
     password: "",
     bio: "",
+    phoneNumber: "",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -47,6 +60,7 @@ const Register = ({ navigateToLogin }) => {
         username: username.trim().toLowerCase(),
         password,
         bio: formData.bio.trim(),
+        phoneNumber: formData.phoneNumber.trim(),
       });
 
       // Redirect to login page on success
@@ -62,21 +76,21 @@ const Register = ({ navigateToLogin }) => {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.bg }]}
     >
       <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
-        <View style={styles.card}>
-          <Text style={styles.title}>
+        <View style={[styles.card, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+          <Text style={[styles.title, { color: colors.text }]}>
             TraderNet <Text style={styles.trendIcon}>📈</Text>
           </Text>
-          <Text style={styles.subtitle}>Create your account to start trading ideas</Text>
+          <Text style={[styles.subtitle, { color: colors.subText }]}>Create your account to start trading ideas</Text>
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Full Name</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Full Name</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.inputText }]}
               placeholder="John Doe"
               placeholderTextColor="#9ca3af"
               value={formData.fullName}
@@ -85,9 +99,9 @@ const Register = ({ navigateToLogin }) => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email Address</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Email Address</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.inputText }]}
               placeholder="john@example.com"
               placeholderTextColor="#9ca3af"
               keyboardType="email-address"
@@ -99,9 +113,23 @@ const Register = ({ navigateToLogin }) => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Username</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Phone Number</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.inputText }]}
+              placeholder="+15550191"
+              placeholderTextColor="#9ca3af"
+              keyboardType="phone-pad"
+              autoCapitalize="none"
+              autoCorrect={false}
+              value={formData.phoneNumber}
+              onChangeText={(text) => handleChange("phoneNumber", text)}
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.text }]}>Username</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.inputText }]}
               placeholder="johndoe"
               placeholderTextColor="#9ca3af"
               autoCapitalize="none"
@@ -112,9 +140,9 @@ const Register = ({ navigateToLogin }) => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Password</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Password</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.inputText }]}
               placeholder="••••••••"
               placeholderTextColor="#9ca3af"
               secureTextEntry
@@ -126,9 +154,9 @@ const Register = ({ navigateToLogin }) => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Trader Bio</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Trader Bio</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[styles.input, styles.textArea, { backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.inputText }]}
               placeholder="e.g. Day trader specializing in Tech stocks and Crypto Options"
               placeholderTextColor="#9ca3af"
               multiline
@@ -139,7 +167,7 @@ const Register = ({ navigateToLogin }) => {
           </View>
 
           <TouchableOpacity
-            style={[styles.btnPrimary, loading && styles.btnDisabled]}
+            style={[styles.btnPrimary, { backgroundColor: colors.primary }, loading && styles.btnDisabled]}
             onPress={handleRegister}
             disabled={loading}
           >
@@ -151,9 +179,9 @@ const Register = ({ navigateToLogin }) => {
           </TouchableOpacity>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Already have an account? </Text>
+            <Text style={[styles.footerText, { color: colors.subText }]}>Already have an account? </Text>
             <TouchableOpacity onPress={navigateToLogin}>
-              <Text style={styles.linkText}>Log In</Text>
+              <Text style={[styles.linkText, { color: colors.primary }]}>Log In</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -165,7 +193,7 @@ const Register = ({ navigateToLogin }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0b0f19",
+    paddingTop: Platform.OS === "android" ? (RNStatusBar.currentHeight || 24) : 0,
   },
   scrollContainer: {
     flexGrow: 1,

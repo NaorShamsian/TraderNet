@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TraderNet - jQuery AJAX Demo</title>
+  <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: #151c2c;
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --border: rgba(255, 255, 255, 0.08);
+      --success: #10b981;
+      --error: #ef4444;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 40px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 650px;
+      background-color: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 30px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+    }
+    h1 {
+      font-size: 24px;
+      font-weight: 800;
+      margin-top: 0;
+      margin-bottom: 24px;
+      text-align: center;
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .note {
+      background-color: rgba(99, 102, 241, 0.08);
+      border-left: 4px solid var(--primary);
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text-muted);
+    }
+    .form-group {
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+    }
+    label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+      color: var(--text-muted);
+    }
+    input {
+      background-color: #1f293d;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus {
+      border-color: var(--primary);
+    }
+    button {
+      background-color: var(--primary);
+      border: none;
+      color: white;
+      padding: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      margin-top: 10px;
+    }
+    button:hover {
+      background-color: var(--primary-hover);
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .section-divider {
+      height: 1px;
+      background-color: var(--border);
+      margin: 30px 0;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      border-radius: 4px;
+      margin-top: 8px;
+    }
+    .badge-success { background-color: rgba(16, 185, 129, 0.15); color: var(--success); }
+    .badge-error { background-color: rgba(239, 68, 68, 0.15); color: var(--error); }
+    .results-container {
+      margin-top: 20px;
+    }
+    .post-card {
+      background-color: #1e293b;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .post-author {
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+    .post-username {
+      font-weight: 400;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+    .post-content {
+      font-size: 14px;
+      line-height: 1.5;
+      margin: 8px 0;
+    }
+    .post-footer {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+    }
+    #statusMessage {
+      font-size: 13px;
+      font-weight: 600;
+      margin-top: 10px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>TraderNet jQuery Ajax Demo 📈</h1>
+    <div class="note">
+      This standalone page adapts the traditional browser jQuery/AJAX requirement. Since our main application is React Native, this isolated page queries our protected REST API using <strong>$.ajax</strong> by injecting a JWT token.
+    </div>
+
+    <!-- Step 1: Authentication -->
+    <div>
+      <h2 style="font-size: 16px; font-weight: 700; margin-bottom: 15px;">Step 1: Authenticate with Server</h2>
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">
+        To search posts, you must authenticate. Use user credentials or click "Login as Demo User" (seeds will run first).
+      </p>
+      
+      <div class="form-group">
+        <label for="loginEmail">Email Address</label>
+        <input type="email" id="loginEmail" value="trader1@trader.net" placeholder="Enter email">
+      </div>
+      
+      <div class="form-group">
+        <label for="loginPassword">Password</label>
+        <input type="password" id="loginPassword" value="password123" placeholder="Enter password">
+      </div>
+
+      <button id="loginBtn">Login & Obtain Token</button>
+      <div id="statusMessage"></div>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- Step 2: Post Search -->
+    <div>
+      <h2 style="font-size: 16px; font-weight: 700; margin-bottom: 15px;">Step 2: Search Posts via AJAX</h2>
+      
+      <div class="form-group">
+        <label for="searchContent">Content Keyword</label>
+        <input type="text" id="searchContent" placeholder="e.g. Breakout, BTC, Analysis" disabled>
+      </div>
+
+      <button id="searchBtn" disabled>Perform $.ajax Search</button>
+
+      <div class="results-container">
+        <h3 style="font-size: 14px; font-weight: 700; margin-bottom: 12px;" id="resultsTitle">Results</h3>
+        <div id="resultsList" style="max-height: 300px; overflow-y: auto;">
+          <p style="font-size: 13px; color: var(--text-muted); text-align: center; padding: 20px;">
+            Please log in first to enable post searching.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    $(document).ready(function() {
+      let jwtToken = "";
+
+      // 1. Handling Login via jQuery AJAX
+      $("#loginBtn").click(function() {
+        const email = $("#loginEmail").val();
+        const password = $("#loginPassword").val();
+
+        if (!email || !password) {
+          showStatus("Please enter email and password.", "error");
+          return;
+        }
+
+        $("#loginBtn").prop("disabled", true).text("Authenticating...");
+
+        $.ajax({
+          url: "/api/users/login",
+          type: "POST",
+          contentType: "application/json",
+          data: JSON.stringify({ email: email, password: password }),
+          success: function(response) {
+            jwtToken = response.token;
+            showStatus("Authenticated successfully! JWT obtained.", "success");
+            
+            // Enable search inputs and button
+            $("#searchContent, #searchBtn").prop("disabled", false);
+            $("#loginBtn").text("Authenticated ✓").css("background-color", "var(--success)");
+            $("#resultsList").html('<p style="font-size: 13px; color: var(--text-muted); text-align: center; padding: 20px;">Token ready. You can now type a keyword and search posts!</p>');
+          },
+          error: function(xhr) {
+            const errorMsg = xhr.responseJSON ? xhr.responseJSON.message : "Authentication failed.";
+            showStatus("Error: " + errorMsg, "error");
+            $("#loginBtn").prop("disabled", false).text("Login & Obtain Token");
+          }
+        });
+      });
+
+      // 2. Handling Post Search via jQuery AJAX with JWT Header
+      $("#searchBtn").click(function() {
+        const content = $("#searchContent").val();
+        $("#searchBtn").prop("disabled", true).text("Searching...");
+
+        $.ajax({
+          url: "/api/posts/search",
+          type: "GET",
+          headers: {
+            "Authorization": "Bearer " + jwtToken
+          },
+          data: {
+            content: content
+          },
+          success: function(posts) {
+            $("#searchBtn").prop("disabled", false).text("Perform $.ajax Search");
+            $("#resultsTitle").text("Results (" + posts.length + ")");
+            
+            if (posts.length === 0) {
+              $("#resultsList").html('<p style="font-size: 13px; color: var(--text-muted); text-align: center; padding: 20px;">No posts match your keyword.</p>');
+              return;
+            }
+
+            let htmlContent = "";
+            posts.forEach(function(post) {
+              const authorName = post.user ? post.user.fullName : "Unknown";
+              const username = post.user ? "@" + post.user.username : "";
+              const dateStr = new Date(post.createdAt).toLocaleDateString();
+              const groupName = post.group ? "📁 in " + post.group.name : "🌐 Global Feed";
+              
+              htmlContent += `
+                <div class="post-card">
+                  <div class="post-author">${authorName} <span class="post-username">${username}</span></div>
+                  <div class="post-content">${post.content}</div>
+                  <div class="post-footer">
+                    <span>${groupName}</span>
+                    <span>${dateStr}</span>
+                  </div>
+                </div>
+              `;
+            });
+
+            $("#resultsList").html(htmlContent);
+          },
+          error: function(xhr) {
+            $("#searchBtn").prop("disabled", false).text("Perform $.ajax Search");
+            const errorMsg = xhr.responseJSON ? xhr.responseJSON.message : "Failed to search posts.";
+            alert("Search Error: " + errorMsg);
+          }
+        });
+      });
+
+      function showStatus(msg, type) {
+        const statusDiv = $("#statusMessage");
+        statusDiv.text(msg);
+        if (type === "success") {
+          statusDiv.css("color", "var(--success)");
+        } else {
+          statusDiv.css("color", "var(--error)");
+        }
+      }
+    });
+  </script>
+</body>
+</html>

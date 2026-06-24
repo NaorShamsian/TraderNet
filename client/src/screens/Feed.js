@@ -8,21 +8,22 @@ import {
   ScrollView,
   ActivityIndicator,
   RefreshControl,
-  SafeAreaView,
-  StatusBar,
   Modal,
   Alert,
 } from "react-native";
-import API from "../api";
-import Navbar from "../components/Navbar";
+import API, { getSessionUser } from "../api";
 import CreatePost from "../components/CreatePost";
 import PostCard from "../components/PostCard";
+import SoundManager from "../utils/SoundManager";
 
-const Feed = ({ onLogout, onNavigate }) => {
+const Feed = ({ onLogout, onNavigate, onStartPrivateChat, theme, isDarkMode, initialTagFilter, onClearTagFilter, incomingRequests, friendRequestsCount }) => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+
+  const [feedFilter, setFeedFilter] = useState("global"); 
+  const [myJoinedGroupIds, setMyJoinedGroupIds] = useState([]);
 
   // Collapsible search state
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
@@ -39,10 +40,33 @@ const Feed = ({ onLogout, onNavigate }) => {
   const [editTags, setEditTags] = useState("");
   const [editLoading, setEditLoading] = useState(false);
 
+  const currentUser = getSessionUser() || {};
+
+  const colors = theme || {
+    bg: "#f8fafc",
+    cardBg: "#ffffff",
+    text: "#0f172a",
+    subText: "#64748b",
+    border: "rgba(15, 23, 42, 0.08)",
+    inputBg: "#f1f5f9",
+    inputText: "#0f172a",
+    primary: "#6366f1",
+    accent: "#ec4899",
+  };
+
   const fetchPosts = async () => {
     try {
       const response = await API.get("/posts");
       setPosts(response.data);
+
+      const groupsRes = await API.get("/groups");
+      const joinedIds = groupsRes.data
+        .filter((g) =>
+          g.members.some((m) => (m._id || m) === currentUser._id)
+        )
+        .map((g) => g._id);
+      setMyJoinedGroupIds(joinedIds);
+
       setError("");
     } catch (err) {
       setError("Failed to load feed posts.");
@@ -53,8 +77,17 @@ const Feed = ({ onLogout, onNavigate }) => {
   };
 
   useEffect(() => {
-    fetchPosts();
-  }, []);
+    if (initialTagFilter) {
+      setIsSearchExpanded(true);
+      setSearchTag(initialTagFilter);
+      handleSearch(initialTagFilter);
+      if (onClearTagFilter) {
+        onClearTagFilter();
+      }
+    } else {
+      fetchPosts();
+    }
+  }, [initialTagFilter]);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -75,15 +108,16 @@ const Feed = ({ onLogout, onNavigate }) => {
     setPosts((prevPosts) => prevPosts.filter((post) => post._id !== deletedPostId));
   };
 
-  const handleSearch = async () => {
+  const handleSearch = async (tagOverride) => {
     setIsSearching(true);
     setLoading(true);
     setError("");
+    const finalTag = typeof tagOverride === "string" ? tagOverride : searchTag;
     try {
       const response = await API.get("/posts/search", {
         params: {
           content: searchContent.trim() || undefined,
-          tag: searchTag.trim() || undefined,
+          tag: finalTag.trim() || undefined,
           fromDate: searchFromDate.trim() || undefined,
           toDate: searchToDate.trim() || undefined,
           username: searchUsername.trim() || undefined,
@@ -96,6 +130,12 @@ const Feed = ({ onLogout, onNavigate }) => {
       setLoading(false);
       setIsSearching(false);
     }
+  };
+
+  const handleTagPress = (tag) => {
+    setIsSearchExpanded(true);
+    setSearchTag(tag);
+    handleSearch(tag);
   };
 
   const handleResetSearch = () => {
@@ -142,41 +182,102 @@ const Feed = ({ onLogout, onNavigate }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#151c2c" />
-      <Navbar onLogout={onLogout} currentScreen="Feed" onNavigate={onNavigate} />
-
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <ScrollView
         contentContainerStyle={styles.scrollContainer}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor="#6366f1"
-            colors={["#6366f1"]}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
           />
         }
       >
-        <CreatePost onPostCreated={handlePostCreated} />
+        {/* Real-time Friend Requests Hint Card Banner */}
+        {friendRequestsCount > 0 && (
+          <TouchableOpacity
+            style={[styles.friendRequestHintCard, { backgroundColor: isDarkMode ? "rgba(99, 102, 241, 0.12)" : "rgba(99, 102, 241, 0.05)", borderColor: colors.primary }]}
+            onPress={() => onNavigate("Profile")}
+            activeOpacity={0.8}
+          >
+            <View style={styles.hintCardLeft}>
+              <Text style={styles.hintCardIcon}>👥</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.hintCardTitle, { color: colors.text }]}>
+                  {friendRequestsCount === 1 ? "You have a new connection request!" : `You have ${friendRequestsCount} pending connection requests!`}
+                </Text>
+                <Text style={[styles.hintCardSubtitle, { color: colors.subText }]}>
+                  Tap here to review and respond to requests
+                </Text>
+              </View>
+            </View>
+            <Text style={[styles.hintCardArrow, { color: colors.primary }]}>➔</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Feed Segment Filter Toggle */}
+        <View style={[styles.segmentContainer, { backgroundColor: isDarkMode ? "rgba(21, 28, 44, 0.6)" : "#f1f5f9", borderColor: colors.border }]}>
+          <TouchableOpacity
+            style={[styles.segmentBtn, feedFilter === "global" && { backgroundColor: colors.primary }]}
+            onPress={() => {
+              SoundManager.segmentSwitch();
+              setFeedFilter("global");
+            }}
+          >
+            <Text style={[styles.segmentText, feedFilter === "global" && { color: "#ffffff" }]}>
+              🌐 Global
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.segmentBtn, feedFilter === "groups" && { backgroundColor: colors.primary }]}
+            onPress={() => {
+              SoundManager.segmentSwitch();
+              setFeedFilter("groups");
+            }}
+          >
+            <Text style={[styles.segmentText, feedFilter === "groups" && { color: "#ffffff" }]}>
+              📁 My Groups
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.segmentBtn, feedFilter === "mine" && { backgroundColor: colors.primary }]}
+            onPress={() => {
+              SoundManager.segmentSwitch();
+              setFeedFilter("mine");
+            }}
+          >
+            <Text style={[styles.segmentText, feedFilter === "mine" && { color: "#ffffff" }]}>
+              👤 My Posts
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {feedFilter === "global" || feedFilter === "mine" ? (
+          <CreatePost onPostCreated={handlePostCreated} theme={colors} isDarkMode={isDarkMode} />
+        ) : null}
 
         {/* Collapsible Search Accordion */}
         <TouchableOpacity
-          style={styles.searchAccordionHeader}
-          onPress={() => setIsSearchExpanded(!isSearchExpanded)}
+          style={[styles.searchAccordionHeader, { backgroundColor: isDarkMode ? "rgba(99, 102, 241, 0.08)" : "rgba(99, 102, 241, 0.04)", borderColor: colors.border }]}
+          onPress={() => {
+            SoundManager.segmentSwitch();
+            setIsSearchExpanded(!isSearchExpanded);
+          }}
         >
-          <Text style={styles.searchAccordionTitle}>
+          <Text style={[styles.searchAccordionTitle, { color: colors.primary }]}>
             {isSearchExpanded ? "👇 Collapse Filters" : "🔍 Advanced Post Search"}
           </Text>
         </TouchableOpacity>
 
         {isSearchExpanded && (
-          <View style={styles.searchAccordionContent}>
+          <View style={[styles.searchAccordionContent, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
             <View style={styles.searchFormGroup}>
-              <Text style={styles.searchFormLabel}>Keyword in Content</Text>
+              <Text style={[styles.searchFormLabel, { color: colors.subText }]}>Keyword in Content</Text>
               <TextInput
-                style={styles.searchFormInput}
+                style={[styles.searchFormInput, { backgroundColor: colors.inputBg, color: colors.inputText, borderColor: colors.border }]}
                 placeholder="e.g. breakout, gold, bullish"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={isDarkMode ? "#9ca3af" : "#64748b"}
                 value={searchContent}
                 onChangeText={setSearchContent}
               />
@@ -184,22 +285,22 @@ const Feed = ({ onLogout, onNavigate }) => {
 
             <View style={styles.searchFormRow}>
               <View style={[styles.searchFormGroup, { flex: 1 }]}>
-                <Text style={styles.searchFormLabel}>Tag</Text>
+                <Text style={[styles.searchFormLabel, { color: colors.subText }]}>Tag</Text>
                 <TextInput
-                  style={styles.searchFormInput}
-                  placeholder="e.g. BTC (no #)"
-                  placeholderTextColor="#9ca3af"
+                  style={[styles.searchFormInput, { backgroundColor: colors.inputBg, color: colors.inputText, borderColor: colors.border }]}
+                  placeholder="e.g. BTC"
+                  placeholderTextColor={isDarkMode ? "#9ca3af" : "#64748b"}
                   autoCapitalize="none"
                   value={searchTag}
                   onChangeText={setSearchTag}
                 />
               </View>
               <View style={[styles.searchFormGroup, { flex: 1 }]}>
-                <Text style={styles.searchFormLabel}>Author Username</Text>
+                <Text style={[styles.searchFormLabel, { color: colors.subText }]}>Author Username</Text>
                 <TextInput
-                  style={styles.searchFormInput}
+                  style={[styles.searchFormInput, { backgroundColor: colors.inputBg, color: colors.inputText, borderColor: colors.border }]}
                   placeholder="e.g. johndoe"
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor={isDarkMode ? "#9ca3af" : "#64748b"}
                   autoCapitalize="none"
                   value={searchUsername}
                   onChangeText={setSearchUsername}
@@ -209,21 +310,21 @@ const Feed = ({ onLogout, onNavigate }) => {
 
             <View style={styles.searchFormRow}>
               <View style={[styles.searchFormGroup, { flex: 1 }]}>
-                <Text style={styles.searchFormLabel}>From Date</Text>
+                <Text style={[styles.searchFormLabel, { color: colors.subText }]}>From Date</Text>
                 <TextInput
-                  style={styles.searchFormInput}
+                  style={[styles.searchFormInput, { backgroundColor: colors.inputBg, color: colors.inputText, borderColor: colors.border }]}
                   placeholder="YYYY-MM-DD"
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor={isDarkMode ? "#9ca3af" : "#64748b"}
                   value={searchFromDate}
                   onChangeText={setSearchFromDate}
                 />
               </View>
               <View style={[styles.searchFormGroup, { flex: 1 }]}>
-                <Text style={styles.searchFormLabel}>To Date</Text>
+                <Text style={[styles.searchFormLabel, { color: colors.subText }]}>To Date</Text>
                 <TextInput
-                  style={styles.searchFormInput}
+                  style={[styles.searchFormInput, { backgroundColor: colors.inputBg, color: colors.inputText, borderColor: colors.border }]}
                   placeholder="YYYY-MM-DD"
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor={isDarkMode ? "#9ca3af" : "#64748b"}
                   value={searchToDate}
                   onChangeText={setSearchToDate}
                 />
@@ -232,7 +333,7 @@ const Feed = ({ onLogout, onNavigate }) => {
 
             <View style={styles.searchFormBtnRow}>
               <TouchableOpacity
-                style={[styles.accordionBtn, styles.searchAccordionBtn]}
+                style={[styles.accordionBtn, styles.searchAccordionBtn, { backgroundColor: colors.primary }]}
                 onPress={handleSearch}
                 disabled={isSearching}
               >
@@ -243,10 +344,10 @@ const Feed = ({ onLogout, onNavigate }) => {
                 )}
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.accordionBtn, styles.resetAccordionBtn]}
+                style={[styles.accordionBtn, styles.resetAccordionBtn, { borderColor: colors.border }]}
                 onPress={handleResetSearch}
               >
-                <Text style={styles.resetBtnText}>Reset</Text>
+                <Text style={[styles.resetBtnText, { color: colors.subText }]}>Reset</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -256,32 +357,58 @@ const Feed = ({ onLogout, onNavigate }) => {
 
         {loading && !refreshing ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#6366f1" />
-            <Text style={styles.loadingText}>Loading trading feed...</Text>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.loadingText, { color: colors.subText }]}>Loading trading feed...</Text>
           </View>
         ) : null}
 
-        {!loading && posts.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyTitle}>No analysis found 📉</Text>
-            <Text style={styles.emptySubtitle}>
-              Try adjusting your search filters or be the first to publish a new post!
-            </Text>
-          </View>
-        ) : null}
+        {(() => {
+          const filteredPosts = posts.filter((post) => {
+            if (feedFilter === "mine") {
+              return (
+                post.user &&
+                (post.user._id === currentUser._id || post.user === currentUser._id)
+              );
+            }
+            if (feedFilter === "groups") {
+              return post.group && myJoinedGroupIds.includes(post.group._id);
+            }
+            return true;
+          });
 
-        {posts.map((post) => (
-          <PostCard
-            key={post._id}
-            post={post}
-            onPostUpdated={handlePostUpdated}
-            onEditPress={handleEditPress}
-            onPostDeleted={handlePostDeleted}
-          />
-        ))}
+          if (!loading && filteredPosts.length === 0) {
+            return (
+              <View style={[styles.emptyContainer, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+                <Text style={[styles.emptyTitle, { color: colors.text }]}>No analysis found 📉</Text>
+                <Text style={[styles.emptySubtitle, { color: colors.subText }]}>
+                  {feedFilter === "groups"
+                    ? "Posts from groups you belong to will show up here. Join some groups first!"
+                    : feedFilter === "mine"
+                    ? "You haven't written any analyses yet! Create your first post above."
+                    : "Try adjusting your search filters or be the first to publish a new post!"}
+                </Text>
+              </View>
+            );
+          }
+
+          return filteredPosts.map((post) => (
+            <PostCard
+              key={post._id}
+              post={post}
+              onPostUpdated={handlePostUpdated}
+              onEditPress={handleEditPress}
+              onPostDeleted={handlePostDeleted}
+              onStartPrivateChat={onStartPrivateChat}
+              onNavigate={onNavigate}
+              onTagPress={handleTagPress}
+              theme={colors}
+              isDarkMode={isDarkMode}
+            />
+          ));
+        })()}
       </ScrollView>
 
-      {/* Edit Post Modal Overlay */}
+      {/* Edit Post Modal */}
       <Modal
         visible={editingPost !== null}
         transparent={true}
@@ -289,37 +416,37 @@ const Feed = ({ onLogout, onNavigate }) => {
         onRequestClose={() => setEditingPost(null)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Edit Post ✏️</Text>
+          <View style={[styles.modalContainer, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Edit Post ✏️</Text>
 
             <View style={styles.modalInputGroup}>
-              <Text style={styles.modalLabel}>Update Post Content</Text>
+              <Text style={[styles.modalLabel, { color: colors.text }]}>Update Post Content</Text>
               <TextInput
-                style={[styles.modalInput, styles.modalTextArea]}
+                style={[styles.modalInput, styles.modalTextArea, { backgroundColor: colors.inputBg, color: colors.inputText, borderColor: colors.border }]}
                 multiline
                 numberOfLines={4}
                 value={editContent}
                 onChangeText={setEditContent}
                 placeholder="What's on your mind?"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={isDarkMode ? "#9ca3af" : "#64748b"}
               />
             </View>
 
             <View style={styles.modalInputGroup}>
-              <Text style={styles.modalLabel}>Tags (comma-separated)</Text>
+              <Text style={[styles.modalLabel, { color: colors.text }]}>Tags (comma-separated)</Text>
               <TextInput
-                style={styles.modalInput}
+                style={[styles.modalInput, { backgroundColor: colors.inputBg, color: colors.inputText, borderColor: colors.border }]}
                 value={editTags}
                 onChangeText={setEditTags}
                 placeholder="e.g. trading, gold, tsla"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={isDarkMode ? "#9ca3af" : "#64748b"}
                 autoCapitalize="none"
               />
             </View>
 
             <View style={styles.modalBtnRow}>
               <TouchableOpacity
-                style={[styles.modalBtn, styles.modalSaveBtn, editLoading && styles.btnDisabled]}
+                style={[styles.modalBtn, styles.modalSaveBtn, { backgroundColor: colors.primary }, editLoading && styles.btnDisabled]}
                 onPress={handleEditSubmit}
                 disabled={editLoading}
               >
@@ -331,25 +458,21 @@ const Feed = ({ onLogout, onNavigate }) => {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.modalBtn, styles.modalCancelBtn]}
+                style={[styles.modalBtn, styles.modalCancelBtn, { borderColor: colors.border }]}
                 onPress={() => setEditingPost(null)}
                 disabled={editLoading}
               >
-                <Text style={styles.modalCancelBtnText}>Cancel</Text>
+                <Text style={[styles.modalCancelBtnText, { color: colors.subText }]}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#0b0f19",
-  },
   scrollContainer: {
     padding: 16,
     paddingBottom: 40,
@@ -371,50 +494,44 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   loadingText: {
-    color: "#9ca3af",
     fontSize: 14,
     marginTop: 10,
   },
   emptyContainer: {
-    backgroundColor: "rgba(21, 28, 44, 0.7)",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
     borderRadius: 16,
     padding: 40,
     alignItems: "center",
     textAlign: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
   },
   emptyTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#f3f4f6",
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 13,
-    color: "#9ca3af",
     textAlign: "center",
     lineHeight: 18,
     maxWidth: 260,
   },
   searchAccordionHeader: {
-    backgroundColor: "rgba(99, 102, 241, 0.08)",
     borderWidth: 1,
-    borderColor: "rgba(99, 102, 241, 0.2)",
     borderRadius: 12,
     paddingVertical: 10,
     alignItems: "center",
     marginBottom: 12,
   },
   searchAccordionTitle: {
-    color: "#6366f1",
     fontSize: 13,
     fontWeight: "700",
   },
   searchAccordionContent: {
-    backgroundColor: "rgba(21, 28, 44, 0.7)",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
     borderRadius: 12,
     padding: 14,
     marginBottom: 16,
@@ -425,19 +542,15 @@ const styles = StyleSheet.create({
   searchFormLabel: {
     fontSize: 10,
     fontWeight: "600",
-    color: "#9ca3af",
     textTransform: "uppercase",
     marginBottom: 4,
     letterSpacing: 0.5,
   },
   searchFormInput: {
-    backgroundColor: "#1f293d",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    color: "#f3f4f6",
     fontSize: 13,
   },
   searchFormRow: {
@@ -463,7 +576,6 @@ const styles = StyleSheet.create({
   resetAccordionBtn: {
     backgroundColor: "transparent",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.15)",
   },
   accordionBtnText: {
     color: "#fff",
@@ -471,13 +583,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   resetBtnText: {
-    color: "#9ca3af",
     fontWeight: "700",
     fontSize: 13,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(11, 15, 25, 0.85)",
+    backgroundColor: "rgba(11, 15, 25, 0.5)",
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
@@ -485,21 +596,18 @@ const styles = StyleSheet.create({
   modalContainer: {
     width: "100%",
     maxWidth: 400,
-    backgroundColor: "#151c2c",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
     borderRadius: 20,
     padding: 20,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.1,
     shadowRadius: 20,
     elevation: 10,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#f3f4f6",
     textAlign: "center",
     marginBottom: 16,
   },
@@ -509,19 +617,15 @@ const styles = StyleSheet.create({
   modalLabel: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#f3f4f6",
     textTransform: "uppercase",
     marginBottom: 6,
     letterSpacing: 0.5,
   },
   modalInput: {
-    backgroundColor: "#1f293d",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    color: "#f3f4f6",
     fontSize: 14,
   },
   modalTextArea: {
@@ -551,15 +655,69 @@ const styles = StyleSheet.create({
   modalCancelBtn: {
     backgroundColor: "transparent",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.15)",
   },
   modalCancelBtnText: {
-    color: "#9ca3af",
     fontWeight: "700",
     fontSize: 14,
   },
   btnDisabled: {
     opacity: 0.7,
+  },
+  segmentContainer: {
+    flexDirection: "row",
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+    justifyContent: "space-between",
+  },
+  segmentBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 8,
+  },
+  segmentText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#64748b",
+  },
+  friendRequestHintCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1.5,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  hintCardLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  hintCardIcon: {
+    fontSize: 22,
+  },
+  hintCardTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  hintCardSubtitle: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  hintCardArrow: {
+    fontSize: 14,
+    fontWeight: "bold",
+    marginLeft: 8,
   },
 });
 

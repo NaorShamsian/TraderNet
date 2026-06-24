@@ -8,13 +8,26 @@ import {
   ActivityIndicator,
 } from "react-native";
 import API from "../api";
+import SoundManager from "../utils/SoundManager";
 
-const CreatePost = ({ onPostCreated }) => {
+const CreatePost = ({ onPostCreated, groupId, theme, isDarkMode }) => {
   const [content, setContent] = useState("");
   const [image, setImage] = useState("");
   const [tagsStr, setTagsStr] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const colors = theme || {
+    bg: "#f8fafc",
+    cardBg: "#ffffff",
+    text: "#0f172a",
+    subText: "#64748b",
+    border: "rgba(15, 23, 42, 0.08)",
+    inputBg: "#f1f5f9",
+    inputText: "#0f172a",
+    primary: "#6366f1",
+    accent: "#ec4899",
+  };
 
   const handlePublish = async () => {
     if (!content.trim()) {
@@ -35,17 +48,19 @@ const CreatePost = ({ onPostCreated }) => {
         content: content.trim(),
         image: image.trim(),
         tags,
+        group: groupId || null,
       });
 
-      // Clear fields
       setContent("");
       setImage("");
       setTagsStr("");
+      SoundManager.postCreated();
 
       if (onPostCreated) {
         onPostCreated(response.data);
       }
     } catch (err) {
+      SoundManager.error();
       setError(err.response?.data?.message || "Failed to create post.");
     } finally {
       setLoading(false);
@@ -53,15 +68,15 @@ const CreatePost = ({ onPostCreated }) => {
   };
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.title}>Share a Trade Idea 💡</Text>
+    <View style={[styles.card, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+      <Text style={[styles.title, { color: colors.text }]}>Share a Trade Idea 💡</Text>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       <TextInput
-        style={styles.textArea}
+        style={[styles.textArea, { backgroundColor: colors.inputBg, color: colors.inputText, borderColor: colors.border }]}
         placeholder="What's your analysis? (e.g. Bullish breakout on $TSLA!)"
-        placeholderTextColor="#9ca3af"
+        placeholderTextColor={isDarkMode ? "#9ca3af" : "#64748b"}
         multiline
         numberOfLines={3}
         maxLength={1000}
@@ -71,9 +86,9 @@ const CreatePost = ({ onPostCreated }) => {
 
       <View style={styles.metaRow}>
         <TextInput
-          style={[styles.input, styles.metaInput]}
+          style={[styles.input, styles.metaInput, { backgroundColor: colors.inputBg, color: colors.inputText, borderColor: colors.border }]}
           placeholder="Image URL (optional)"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor={isDarkMode ? "#9ca3af" : "#64748b"}
           autoCapitalize="none"
           autoCorrect={false}
           value={image}
@@ -81,9 +96,9 @@ const CreatePost = ({ onPostCreated }) => {
         />
         
         <TextInput
-          style={[styles.input, styles.metaInput]}
+          style={[styles.input, styles.metaInput, { backgroundColor: colors.inputBg, color: colors.inputText, borderColor: colors.border }]}
           placeholder="Tags (separated by commas)"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor={isDarkMode ? "#9ca3af" : "#64748b"}
           autoCapitalize="none"
           autoCorrect={false}
           value={tagsStr}
@@ -92,9 +107,9 @@ const CreatePost = ({ onPostCreated }) => {
       </View>
 
       <View style={styles.actionRow}>
-        <Text style={styles.charCount}>{content.length}/1000</Text>
+        <Text style={[styles.charCount, { color: colors.subText }]}>{content.length}/1000</Text>
         <TouchableOpacity
-          style={[styles.btnPrimary, loading && styles.btnDisabled]}
+          style={[styles.btnPrimary, { backgroundColor: colors.primary }, loading && styles.btnDisabled]}
           onPress={handlePublish}
           disabled={loading}
         >
@@ -111,18 +126,20 @@ const CreatePost = ({ onPostCreated }) => {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "rgba(21, 28, 44, 0.7)",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     width: "100%",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 6,
+    elevation: 1,
   },
   title: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#f3f4f6",
     marginBottom: 12,
   },
   errorText: {
@@ -136,12 +153,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   textArea: {
-    backgroundColor: "#1f293d",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
     borderRadius: 12,
     padding: 12,
-    color: "#f3f4f6",
     fontSize: 14,
     minHeight: 80,
     textAlignVertical: "top",
@@ -153,13 +167,10 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   input: {
-    backgroundColor: "#1f293d",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    color: "#f3f4f6",
     fontSize: 13,
   },
   metaInput: {
@@ -172,10 +183,8 @@ const styles = StyleSheet.create({
   },
   charCount: {
     fontSize: 12,
-    color: "#9ca3af",
   },
   btnPrimary: {
-    backgroundColor: "#6366f1",
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 10,

@@ -24,6 +24,11 @@ const postSchema = new mongoose.Schema(
       ref: "User",
       required: [true, "Post must belong to a user"],
     },
+    group: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Group",
+      default: null,
+    },
     content: {
       type: String,
       required: [true, "Post content is required"],

@@ -4,7 +4,7 @@ import axios from "axios";
 // Replace this with your computer's local IP address (e.g. 192.168.1.15) so your smartphone can connect!
 // On Windows: run 'ipconfig' in command prompt to find your IPv4 Address.
 // On Mac/Linux: run 'ifconfig' or check your network preferences.
-const LOCAL_IP = "192.168.1.89"; // Auto-configured to match your computer's IP!
+export const LOCAL_IP = "192.168.1.89"; // Auto-configured to match your computer's IP!
 
 const API = axios.create({
   baseURL: `http://${LOCAL_IP}:5000/api`,
