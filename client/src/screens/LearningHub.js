@@ -166,7 +166,7 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
           border-radius: 24px;
           padding: 8px 16px;
           display: flex;
-          gap: 6px;
+          gap: 8px;
           align-items: center;
           box-shadow: 0 12px 36px 0 rgba(0, 0, 0, 0.5);
           max-width: 95%;
@@ -211,25 +211,6 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
           background: rgba(255, 255, 255, 0.15);
           margin: 0 2px;
         }
-        /* Color Picker */
-        .color-picker {
-          display: flex;
-          gap: 5px;
-          align-items: center;
-          margin-left: 4px;
-        }
-        .color-dot {
-          width: 14px;
-          height: 14px;
-          border-radius: 50%;
-          cursor: pointer;
-          border: 2px solid transparent;
-          transition: transform 0.1s ease;
-        }
-        .color-dot.selected {
-          border-color: #ffffff;
-          transform: scale(1.15);
-        }
         /* Status Banner */
         .status-banner {
           position: absolute;
@@ -258,28 +239,15 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
           🔍 Chart
         </button>
         <div class="divider"></div>
-        <button id="btn_trendline" class="tool-btn" onclick="setMode('trendline')">
-          📈 Trend
-        </button>
-        <button id="btn_fibonacci" class="tool-btn" onclick="setMode('fibonacci')">
-          🧬 Fib
-        </button>
         <button id="btn_support" class="tool-btn" onclick="setMode('support')">
-          🟢 Supp
+          🟢 Support Line
         </button>
         <button id="btn_resistance" class="tool-btn" onclick="setMode('resistance')">
-          🔴 Res
+          🔴 Resistance Line
         </button>
         <div class="divider"></div>
-        <div class="color-picker">
-          <div class="color-dot selected" style="background-color: #10b981;" onclick="setColor('#10b981', this)"></div>
-          <div class="color-dot" style="background-color: #ef4444;" onclick="setColor('#ef4444', this)"></div>
-          <div class="color-dot" style="background-color: #6366f1;" onclick="setColor('#6366f1', this)"></div>
-          <div class="color-dot" style="background-color: #f59e0b;" onclick="setColor('#f59e0b', this)"></div>
-        </div>
-        <div class="divider"></div>
         <button class="tool-btn danger" onclick="clearDrawings()">
-          🗑️
+          🗑️ Clear
         </button>
       </div>
 
@@ -302,7 +270,7 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
             "locale": "en",
             "toolbar_bg": "#0b0f19",
             "enable_publishing": false,
-            "hide_side_toolbar": true, // DISABLE TRADINGVIEW SIDE DRAWING TOOLBAR
+            "hide_side_toolbar": true, // HIDE TRADINGVIEW DEFAULT DRAWING TOOLS
             "allow_symbol_change": true,
             "container_id": "widget_container"
           });
@@ -317,8 +285,8 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
         let initialLeft, initialTop;
 
         toolbar.addEventListener('pointerdown', (e) => {
-          if (e.target.closest('button') || e.target.closest('.color-picker') || e.target.classList.contains('divider')) {
-            return;
+          if (e.target.closest('button') || e.target.classList.contains('divider')) {
+            return; // let buttons work normally
           }
           isDraggingToolbar = true;
           startX = e.clientX;
@@ -366,17 +334,13 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
           toolbar.releasePointerCapture(e.pointerId);
         });
 
-        // Drawing Canvas Engine
+        // Drawing Canvas Engine (Support and Resistance Only)
         const canvas = document.getElementById('drawing_canvas');
         const ctx = canvas.getContext('2d');
         const statusBanner = document.getElementById('status_banner');
 
         let currentMode = 'chart';
-        let currentColor = '#10b981';
         let drawings = [];
-        let isDrawing = false;
-        let startPoint = { x: 0, y: 0 };
-        let currentPoint = { x: 0, y: 0 };
 
         function resizeCanvas() {
           canvas.width = window.innerWidth;
@@ -403,86 +367,27 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
           } else {
             canvas.style.pointerEvents = 'auto';
             statusBanner.innerText = 'MODE: DRAW ' + mode.toUpperCase() + ' (CHART LOCKED)';
-            statusBanner.style.color = mode === 'support' ? '#10b981' : (mode === 'resistance' ? '#ef4444' : '#6366f1');
+            statusBanner.style.color = mode === 'support' ? '#10b981' : '#ef4444';
           }
-          isDrawing = false;
           drawAll();
-        }
-
-        function setColor(color, dotElem) {
-          currentColor = color;
-          document.querySelectorAll('.color-dot').forEach(dot => dot.classList.remove('selected'));
-          dotElem.classList.add('selected');
         }
 
         function clearDrawings() {
           drawings = [];
-          isDrawing = false;
           drawAll();
         }
 
+        // Add drawing on tap coordinates immediately
         canvas.addEventListener('pointerdown', (e) => {
           if (currentMode === 'chart') return;
           
           const rect = canvas.getBoundingClientRect();
-          const x = e.clientX - rect.left;
           const y = e.clientY - rect.top;
-          
-          isDrawing = true;
-          startPoint = { x, y };
-          currentPoint = { x, y };
 
           if (currentMode === 'support') {
             drawings.push({ type: 'horizontal', y, color: '#10b981', label: 'Support Level' });
-            isDrawing = false;
-            drawAll();
           } else if (currentMode === 'resistance') {
             drawings.push({ type: 'horizontal', y, color: '#ef4444', label: 'Resistance Level' });
-            isDrawing = false;
-            drawAll();
-          }
-        });
-
-        canvas.addEventListener('pointermove', (e) => {
-          if (!isDrawing) return;
-          
-          const rect = canvas.getBoundingClientRect();
-          currentPoint = {
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top
-          };
-          drawAll();
-        });
-
-        canvas.addEventListener('pointerup', (e) => {
-          if (!isDrawing) return;
-          isDrawing = false;
-
-          const rect = canvas.getBoundingClientRect();
-          const endX = e.clientX - rect.left;
-          const endY = e.clientY - rect.top;
-
-          const dist = Math.hypot(endX - startPoint.x, endY - startPoint.y);
-          if (dist > 5) {
-            if (currentMode === 'trendline') {
-              drawings.push({
-                type: 'trendline',
-                x1: startPoint.x,
-                y1: startPoint.y,
-                x2: endX,
-                y2: endY,
-                color: currentColor
-              });
-            } else if (currentMode === 'fibonacci') {
-              drawings.push({
-                type: 'fibonacci',
-                x1: startPoint.x,
-                y1: startPoint.y,
-                x2: endX,
-                y2: endY,
-                color: currentColor
-              });
-            }
           }
           drawAll();
         });
@@ -491,116 +396,22 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
 
           drawings.forEach(d => {
-            drawItem(d);
-          });
-
-          if (isDrawing) {
-            if (currentMode === 'trendline') {
-              drawItem({
-                type: 'trendline',
-                x1: startPoint.x,
-                y1: startPoint.y,
-                x2: currentPoint.x,
-                y2: currentPoint.y,
-                color: currentColor,
-                preview: true
-              });
-            } else if (currentMode === 'fibonacci') {
-              drawItem({
-                type: 'fibonacci',
-                x1: startPoint.x,
-                y1: startPoint.y,
-                x2: currentPoint.x,
-                y2: currentPoint.y,
-                color: currentColor,
-                preview: true
-              });
-            }
-          }
-        }
-
-        function drawItem(item) {
-          if (item.type === 'horizontal') {
             ctx.beginPath();
-            ctx.strokeStyle = item.color;
+            ctx.strokeStyle = d.color;
             ctx.lineWidth = 2;
             ctx.setLineDash([6, 6]);
-            ctx.moveTo(0, item.y);
-            ctx.lineTo(canvas.width, item.y);
+            ctx.moveTo(0, d.y);
+            ctx.lineTo(canvas.width, d.y);
             ctx.stroke();
             ctx.setLineDash([]);
 
-            ctx.fillStyle = item.color;
+            // Label tag
+            ctx.fillStyle = d.color;
             ctx.font = 'bold 9px monospace';
-            ctx.fillRect(10, item.y - 15, 105, 13);
+            ctx.fillRect(10, d.y - 15, 105, 13);
             ctx.fillStyle = '#ffffff';
-            ctx.fillText(item.label.toUpperCase(), 14, item.y - 5);
-          } 
-          else if (item.type === 'trendline') {
-            ctx.beginPath();
-            ctx.strokeStyle = item.color;
-            ctx.lineWidth = item.preview ? 1.5 : 2.5;
-            if (item.preview) ctx.setLineDash([4, 4]);
-            ctx.moveTo(item.x1, item.y1);
-            ctx.lineTo(item.x2, item.y2);
-            ctx.stroke();
-            ctx.setLineDash([]);
-
-            ctx.beginPath();
-            ctx.fillStyle = item.color;
-            ctx.arc(item.x1, item.y1, 4, 0, Math.PI * 2);
-            ctx.arc(item.x2, item.y2, 4, 0, Math.PI * 2);
-            ctx.fill();
-          }
-          else if (item.type === 'fibonacci') {
-            ctx.beginPath();
-            ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-            ctx.lineWidth = 1;
-            ctx.setLineDash([4, 4]);
-            ctx.moveTo(item.x1, item.y1);
-            ctx.lineTo(item.x2, item.y2);
-            ctx.stroke();
-            ctx.setLineDash([]);
-
-            const deltaY = item.y2 - item.y1;
-            const fibRatios = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0];
-            const fibLabels = ['100% (1.000)', '78.6% (0.786)', '61.8% (0.618)', '50.0% (0.500)', '38.2% (0.382)', '23.6% (0.236)', '0% (0.000)'];
-
-            fibRatios.forEach((ratio, index) => {
-              const levelY = item.y1 + deltaY * ratio;
-              ctx.beginPath();
-              ctx.strokeStyle = item.color;
-              ctx.lineWidth = (ratio === 0 || ratio === 1) ? 1.5 : 1;
-              ctx.moveTo(0, levelY);
-              ctx.lineTo(canvas.width, levelY);
-              ctx.stroke();
-
-              ctx.fillStyle = 'rgba(11, 15, 25, 0.75)';
-              ctx.fillRect(6, levelY - 11, 85, 10);
-              ctx.fillStyle = item.color;
-              ctx.font = '9px monospace';
-              ctx.fillText(fibLabels[index], 10, levelY - 3);
-
-              if (index < fibRatios.length - 1) {
-                const nextLevelY = item.y1 + deltaY * fibRatios[index + 1];
-                ctx.fillStyle = hexToRgba(item.color, 0.035);
-                ctx.fillRect(0, levelY, canvas.width, nextLevelY - levelY);
-              }
-            });
-          }
-        }
-
-        function hexToRgba(hex, alpha) {
-          let c;
-          if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
-            c= hex.substring(1).split('');
-            if(c.length== 3){
-              c= [c[0], c[0], c[1], c[1], c[2], c[2]];
-            }
-            c= '0x'+c.join('');
-            return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+','+alpha+')';
-          }
-          return 'rgba(99,102,241,' + alpha + ')';
+            ctx.fillText(d.label.toUpperCase(), 14, d.y - 5);
+          });
         }
       </script>
     </body>
@@ -676,13 +487,14 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
         <View style={[styles.videoPlayerCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
           <View style={styles.videoWindow}>
             {playing ? (
-              /* Embedded YouTube Video Viewer inside WebView for flawless, cross-platform video execution */
+              /* Embedded YouTube Video Viewer inside WebView with desktop UA and origin confluence to prevent mobile blocking */
               <WebView
                 style={styles.youtubeWebview}
-                source={{ uri: `https://www.youtube.com/embed/${currentVideo.youtubeId}?autoplay=1&modestbranding=1&rel=0` }}
+                source={{ uri: `https://www.youtube.com/embed/${currentVideo.youtubeId}?autoplay=1&playsinline=1&enablejsapi=1&origin=https://www.youtube.com` }}
                 javaScriptEnabled={true}
                 domStorageEnabled={true}
                 allowsFullscreenVideo={true}
+                userAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
               />
             ) : (
               /* Simulated premium cover before clicking play */
