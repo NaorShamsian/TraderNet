@@ -487,13 +487,20 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
         <View style={[styles.videoPlayerCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
           <View style={styles.videoWindow}>
             {playing ? (
-              /* Embedded YouTube Video Viewer inside WebView with desktop UA and origin confluence to prevent mobile blocking */
+              /* Embedded YouTube Video Viewer inside WebView with desktop UA, direct Referer header and no-cookie domain to prevent Error 153 */
               <WebView
                 style={styles.youtubeWebview}
-                source={{ uri: `https://www.youtube.com/embed/${currentVideo.youtubeId}?autoplay=1&playsinline=1&enablejsapi=1&origin=https://www.youtube.com` }}
+                source={{ 
+                  uri: `https://www.youtube-nocookie.com/embed/${currentVideo.youtubeId}?autoplay=1&playsinline=1&enablejsapi=1&origin=https://www.youtube.com`,
+                  headers: {
+                    Referer: "https://www.youtube.com"
+                  }
+                }}
                 javaScriptEnabled={true}
                 domStorageEnabled={true}
                 allowsFullscreenVideo={true}
+                allowsInlineMediaPlayback={true}
+                mediaPlaybackRequiresUserAction={false}
                 userAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
               />
             ) : (
