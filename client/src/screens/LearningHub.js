@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -11,13 +11,13 @@ import {
   ActivityIndicator,
   Platform,
 } from "react-native";
-import { Video } from "expo-av";
 import { WebView } from "react-native-webview";
 
 const { width } = Dimensions.get("window");
 
 const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
   const [activeTab, setActiveTab] = useState("video"); // 'video' or 'terminal'
+  const [playing, setPlaying] = useState(false);
 
   const colors = theme || {
     bg: isDarkMode ? "#0b0f19" : "#f8fafc",
@@ -30,15 +30,13 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
     primary: "#6366f1",
   };
 
-  // ================= VIDEO PLAYER STATE =================
-  const videoRef = useRef(null);
-  const [playing, setPlaying] = useState(false);
+  // ================= VIDEO PLAYER STATE & SYLLABUS =================
   const [currentVideo, setCurrentVideo] = useState({
     id: 1,
     title: "1. השווקים השונים בשוק ההון - מבוא למסחר",
     duration: "12:45",
     thumbnail: "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=600",
-    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+    youtubeId: "a9j_3R1R5pM",
     mentor: "TTrades Education",
   });
 
@@ -48,7 +46,7 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
       title: "1. השווקים השונים בשוק ההון - מבוא למסחר",
       duration: "12:45",
       thumbnail: "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=600",
-      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+      youtubeId: "a9j_3R1R5pM",
       mentor: "TTrades Education",
     },
     {
@@ -56,7 +54,7 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
       title: "2. הנר היפני - אנטומיה ומבנה הנרות",
       duration: "15:20",
       thumbnail: "https://images.unsplash.com/photo-1621761191319-c6fb62004040?w=600",
-      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+      youtubeId: "55n-mrxL6lE",
       mentor: "TTrades Education",
     },
     {
@@ -64,7 +62,7 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
       title: "3. מגמות למחיר - זיהוי כיוון השוק",
       duration: "14:10",
       thumbnail: "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=600",
-      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+      youtubeId: "8W0Z2K8j2e4",
       mentor: "TTrades Education",
     },
     {
@@ -72,7 +70,7 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
       title: "4. תמיכה והתנגדות - מיפוי רמות מפתח",
       duration: "18:35",
       thumbnail: "https://images.unsplash.com/photo-1642390091310-70f1a55d6a09?w=600",
-      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
+      youtubeId: "F3_mP-jN_zM",
       mentor: "TTrades Education",
     },
     {
@@ -80,7 +78,7 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
       title: "5. ביאס שבועי - קביעת כיוון שבועי ויומי",
       duration: "22:15",
       thumbnail: "https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=600",
-      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
+      youtubeId: "WJ3T9s5P6bA",
       mentor: "TTrades Education",
     },
     {
@@ -88,7 +86,7 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
       title: "6. מבנה השוק - BOS, CHoCH וסירקולציה",
       duration: "20:50",
       thumbnail: "https://images.unsplash.com/photo-1598257006458-087169a1f08d?w=600",
-      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
+      youtubeId: "4m2hZ_8V4yE",
       mentor: "TTrades Education",
     },
     {
@@ -96,7 +94,7 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
       title: "7. ניהול סיכונים - המפתח להישרדות ורווחיות",
       duration: "16:30",
       thumbnail: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=600",
-      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
+      youtubeId: "k-O3l7g7yP0",
       mentor: "TTrades Education",
     },
     {
@@ -104,31 +102,18 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
       title: "8. פסיכולוגיית מסחר - לשלוט ברגשות בתוך העסקה",
       duration: "13:40",
       thumbnail: "https://images.unsplash.com/photo-1607863680198-23d4b2565df0?w=600",
-      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+      youtubeId: "8f3G9_j2wNk",
       mentor: "TTrades Education",
     },
   ];
 
-  const handlePlayLesson = async (lesson) => {
+  const handlePlayLesson = (lesson) => {
     setCurrentVideo(lesson);
     setPlaying(true);
-    if (videoRef.current) {
-      await videoRef.current.loadAsync(
-        { uri: lesson.videoUrl },
-        { shouldPlay: true },
-        false
-      );
-    }
   };
 
-  const handlePlayPause = async () => {
-    if (playing) {
-      await videoRef.current?.pauseAsync();
-      setPlaying(false);
-    } else {
-      await videoRef.current?.playAsync();
-      setPlaying(true);
-    }
+  const handlePlayPause = () => {
+    setPlaying(true);
   };
 
   // ================= WEBVIEW TRADING TERMINAL HTML =================
@@ -167,14 +152,14 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
           pointer-events: none;
           cursor: crosshair;
         }
-        /* Sleek Draggable Floating Toolbar */
+        /* Sleaggable Floating Toolbar */
         .toolbar {
           position: absolute;
-          top: 12px;
+          top: 16px;
           left: 50%;
           transform: translateX(-50%);
           z-index: 20;
-          background: rgba(21, 28, 44, 0.88);
+          background: rgba(21, 28, 44, 0.9);
           backdrop-filter: blur(14px);
           -webkit-backdrop-filter: blur(14px);
           border: 1px solid rgba(255, 255, 255, 0.14);
@@ -187,7 +172,7 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
           max-width: 95%;
           flex-wrap: wrap;
           justify-content: center;
-          touch-action: none; /* Crucial for drag gestures to work on mobile */
+          touch-action: none;
           cursor: move;
         }
         .tool-btn {
@@ -245,7 +230,7 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
           border-color: #ffffff;
           transform: scale(1.15);
         }
-        /* Banner */
+        /* Status Banner */
         .status-banner {
           position: absolute;
           bottom: 12px;
@@ -317,7 +302,7 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
             "locale": "en",
             "toolbar_bg": "#0b0f19",
             "enable_publishing": false,
-            "hide_side_toolbar": true, // HIDDEN TRADINGVIEW DEFAULT TOOLS
+            "hide_side_toolbar": true, // DISABLE TRADINGVIEW SIDE DRAWING TOOLBAR
             "allow_symbol_change": true,
             "container_id": "widget_container"
           });
@@ -325,7 +310,7 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
           console.error("TradingView load error:", e);
         }
 
-        // Draggable Toolbar Logic
+        // Draggable Toolbar Engine
         const toolbar = document.querySelector('.toolbar');
         let isDraggingToolbar = false;
         let startX, startY;
@@ -333,7 +318,7 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
 
         toolbar.addEventListener('pointerdown', (e) => {
           if (e.target.closest('button') || e.target.closest('.color-picker') || e.target.classList.contains('divider')) {
-            return; // let buttons work normally
+            return;
           }
           isDraggingToolbar = true;
           startX = e.clientX;
@@ -343,7 +328,6 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
           initialLeft = rect.left;
           initialTop = rect.top;
 
-          // Prevent jump by setting absolute coordinates and removing translate
           toolbar.style.left = initialLeft + 'px';
           toolbar.style.top = initialTop + 'px';
           toolbar.style.transform = 'none';
@@ -546,7 +530,6 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
             ctx.stroke();
             ctx.setLineDash([]);
 
-            // Text tag
             ctx.fillStyle = item.color;
             ctx.font = 'bold 9px monospace';
             ctx.fillRect(10, item.y - 15, 105, 13);
@@ -624,6 +607,36 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
     </html>
   `;
 
+  // Render absolute full screen for Terminal mode, satisfying maximum workspace request
+  if (activeTab === "terminal") {
+    return (
+      <View style={styles.fullScreenTerminalContainer}>
+        <WebView
+          originWhitelist={["*"]}
+          source={{ html: terminalHtml }}
+          style={styles.fullScreenWebview}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          startInLoadingState={true}
+          renderLoading={() => (
+            <View style={styles.terminalLoading}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={[styles.loadingText, { color: colors.subText }]}>Loading Live TradingView Terminal...</Text>
+            </View>
+          )}
+        />
+
+        {/* Floating Back Button to return to Videos */}
+        <TouchableOpacity 
+          style={[styles.floatingBackBtn, { backgroundColor: "rgba(21, 28, 44, 0.85)", borderColor: colors.border }]}
+          onPress={() => setActiveTab("video")}
+        >
+          <Text style={styles.floatingBackBtnText}>🎬 Videos</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
       <View style={styles.headerContainer}>
@@ -658,119 +671,80 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
         </TouchableOpacity>
       </View>
 
-      {activeTab === "video" ? (
-        // ================= VIDEO SCREEN =================
-        <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-          <View style={[styles.videoPlayerCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
-            <View style={styles.videoWindow}>
-              <Video
-                ref={videoRef}
-                source={{ uri: currentVideo.videoUrl }}
-                style={styles.videoPlayer}
-                resizeMode="contain"
-                shouldPlay={playing}
-                useNativeControls={true}
-                onPlaybackStatusUpdate={(status) => {
-                  if (status.isLoaded) {
-                    setPlaying(status.isPlaying);
-                  }
-                }}
+      {/* VIDEO SCREEN */}
+      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+        <View style={[styles.videoPlayerCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+          <View style={styles.videoWindow}>
+            {playing ? (
+              /* Embedded YouTube Video Viewer inside WebView for flawless, cross-platform video execution */
+              <WebView
+                style={styles.youtubeWebview}
+                source={{ uri: `https://www.youtube.com/embed/${currentVideo.youtubeId}?autoplay=1&modestbranding=1&rel=0` }}
+                javaScriptEnabled={true}
+                domStorageEnabled={true}
+                allowsFullscreenVideo={true}
               />
-
-              {/* Simulated high-end thumbnail cover before playing */}
-              {!playing && (
-                <View style={styles.thumbnailOverlay}>
-                  <Image
-                    source={{ uri: currentVideo.thumbnail }}
-                    style={styles.videoThumbnail}
-                    resizeMode="cover"
-                  />
-                  <View style={styles.darkenCover} />
-                  
-                  <View style={styles.instructorTag}>
-                    <Text style={styles.instructorText}>MENTOR: {currentVideo.mentor.toUpperCase()}</Text>
-                  </View>
-
-                  <TouchableOpacity style={styles.bigPlayBtn} onPress={handlePlayPause}>
-                    <Text style={styles.bigPlayBtnText}>▶</Text>
-                  </TouchableOpacity>
-
-                  <Text style={styles.playPrompt}>Tap to start learning</Text>
+            ) : (
+              /* Simulated premium cover before clicking play */
+              <View style={styles.thumbnailOverlay}>
+                <Image
+                  source={{ uri: currentVideo.thumbnail }}
+                  style={styles.videoThumbnail}
+                  resizeMode="cover"
+                />
+                <View style={styles.darkenCover} />
+                
+                <View style={styles.instructorTag}>
+                  <Text style={styles.instructorText}>MENTOR: {currentVideo.mentor.toUpperCase()}</Text>
                 </View>
-              )}
-            </View>
 
-            <View style={styles.playerMeta}>
-              <Text style={[styles.currentVideoTitle, { color: colors.text }]}>{currentVideo.title}</Text>
-              <Text style={[styles.currentVideoMentor, { color: colors.subText }]}>Course Instructor: {currentVideo.mentor} • Length: {currentVideo.duration}</Text>
-            </View>
+                <TouchableOpacity style={styles.bigPlayBtn} onPress={handlePlayPause}>
+                  <Text style={styles.bigPlayBtnText}>▶</Text>
+                </TouchableOpacity>
+
+                <Text style={styles.playPrompt}>Tap to start learning</Text>
+              </View>
+            )}
           </View>
 
-          {/* Course Outline List */}
-          <Text style={[styles.subHeading, { color: colors.text }]}>Educational Syllabus (Chronological Order)</Text>
-          {lessons.map((lesson) => {
-            const isSelected = currentVideo.id === lesson.id;
-            return (
-              <TouchableOpacity
-                key={lesson.id}
-                style={[
-                  styles.lessonCard,
-                  { backgroundColor: colors.cardBg, borderColor: colors.border },
-                  isSelected && { 
-                    borderColor: colors.primary, 
-                    backgroundColor: isDarkMode ? "rgba(99, 102, 241, 0.1)" : "rgba(99, 102, 241, 0.04)" 
-                  },
-                ]}
-                onPress={() => handlePlayLesson(lesson)}
-              >
-                <Image source={{ uri: lesson.thumbnail }} style={styles.lessonThumb} />
-                <View style={styles.lessonMeta}>
-                  <Text style={[styles.lessonTitle, { color: colors.text }]} numberOfLines={1}>
-                    {lesson.title}
-                  </Text>
-                  <Text style={[styles.lessonInstructor, { color: colors.subText }]}>By {lesson.mentor}</Text>
-                  <Text style={[styles.lessonDuration, { color: colors.primary }]}>⏳ {lesson.duration} minutes</Text>
-                </View>
-                {isSelected && (
-                  <Text style={[styles.activeCheck, { color: colors.primary }]}>Active</Text>
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      ) : (
-        // ================= TERMINAL WEBVIEW & CANVAS SCREEN (FULL SCREEN WORKSPACE) =================
-        <View style={styles.terminalContainer}>
-          <View style={[styles.canvasDescCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
-            <Text style={[styles.canvasDescTitle, { color: colors.text }]}>📊 Active Candlestick Terminal</Text>
-            <Text style={[styles.canvasDescText, { color: colors.subText }]}>
-              Analyze real-time market action. Toggle **Draw Mode** at the top floating menu to draw custom **Trendlines**, **Fibonacci Retracements**, or **Support/Resistance lines** directly on the canvas overlay.
-            </Text>
+          <View style={styles.playerMeta}>
+            <Text style={[styles.currentVideoTitle, { color: colors.text }]}>{currentVideo.title}</Text>
+            <Text style={[styles.currentVideoMentor, { color: colors.subText }]}>Course Instructor: {currentVideo.mentor} • Length: {currentVideo.duration}</Text>
           </View>
-
-          {/* Premium WebView Terminal Card (flex: 1 for full screen size) */}
-          <View style={[styles.terminalCard, { borderColor: colors.border, backgroundColor: "#0b0f19" }]}>
-            <WebView
-              originWhitelist={["*"]}
-              source={{ html: terminalHtml }}
-              style={styles.webview}
-              javaScriptEnabled={true}
-              domStorageEnabled={true}
-              startInLoadingState={true}
-              renderLoading={() => (
-                <View style={styles.terminalLoading}>
-                  <ActivityIndicator size="large" color={colors.primary} />
-                  <Text style={[styles.loadingText, { color: colors.subText }]}>Loading Live TradingView Feeds...</Text>
-                </View>
-              )}
-            />
-          </View>
-          
-          <Text style={[styles.canvasFooterLabel, { color: colors.subText }]}>
-            * Zoom and scroll the live chart in Chart Mode. Lock the chart and draw overlays by selecting any drawing tool on the toolbar.
-          </Text>
         </View>
-      )}
+
+        {/* Course Outline List */}
+        <Text style={[styles.subHeading, { color: colors.text }]}>Educational Syllabus (Chronological Order)</Text>
+        {lessons.map((lesson) => {
+          const isSelected = currentVideo.id === lesson.id;
+          return (
+            <TouchableOpacity
+              key={lesson.id}
+              style={[
+                styles.lessonCard,
+                { backgroundColor: colors.cardBg, borderColor: colors.border },
+                isSelected && { 
+                  borderColor: colors.primary, 
+                  backgroundColor: isDarkMode ? "rgba(99, 102, 241, 0.1)" : "rgba(99, 102, 241, 0.04)" 
+                },
+              ]}
+              onPress={() => handlePlayLesson(lesson)}
+            >
+              <Image source={{ uri: lesson.thumbnail }} style={styles.lessonThumb} />
+              <View style={styles.lessonMeta}>
+                <Text style={[styles.lessonTitle, { color: colors.text }]} numberOfLines={1}>
+                  {lesson.title}
+                </Text>
+                <Text style={[styles.lessonInstructor, { color: colors.subText }]}>By {lesson.mentor}</Text>
+                <Text style={[styles.lessonDuration, { color: colors.primary }]}>⏳ {lesson.duration} minutes</Text>
+              </View>
+              {isSelected && (
+                <Text style={[styles.activeCheck, { color: colors.primary }]}>Active</Text>
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -827,9 +801,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#000",
     position: "relative",
   },
-  videoPlayer: {
+  youtubeWebview: {
     width: "100%",
     height: "100%",
+    backgroundColor: "#000",
   },
   thumbnailOverlay: {
     position: "absolute",
@@ -946,36 +921,13 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
 
-  // TERMINAL WEBVIEW STYLES (FULL SCREEN AREA)
-  terminalContainer: {
+  // ABSOLUTE FULL-SCREEN TERMINAL WEBVIEW STYLES
+  fullScreenTerminalContainer: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingBottom: Platform.OS === "ios" ? 24 : 12,
-  },
-  canvasDescCard: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 10,
-  },
-  canvasDescTitle: {
-    fontSize: 13,
-    fontWeight: "800",
-    marginBottom: 4,
-  },
-  canvasDescText: {
-    fontSize: 11,
-    lineHeight: 16,
-  },
-  terminalCard: {
-    flex: 1, // OCCUPY ALL REMAINING HEIGHT IN FLEXBOX CONTAINER
-    borderRadius: 16,
-    overflow: "hidden",
-    borderWidth: 1,
-    marginBottom: 6,
+    backgroundColor: "#0b0f19",
     position: "relative",
   },
-  webview: {
+  fullScreenWebview: {
     flex: 1,
   },
   terminalLoading: {
@@ -994,11 +946,25 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontWeight: "600",
   },
-  canvasFooterLabel: {
-    fontSize: 10,
-    textAlign: "center",
-    marginTop: 2,
-    lineHeight: 14,
+  floatingBackBtn: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 50 : 20,
+    left: 20,
+    zIndex: 100,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  floatingBackBtnText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "800",
   },
 });
 
