@@ -30,13 +30,13 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
     primary: "#6366f1",
   };
 
-  // ================= VIDEO PLAYER STATE & SYLLABUS =================
+  // ================= VIDEO PLAYER STATE & SYLLABUS (TTRADES ONLY) =================
   const [currentVideo, setCurrentVideo] = useState({
     id: 1,
     title: "1. השווקים השונים בשוק ההון - מבוא למסחר",
     duration: "12:45",
     thumbnail: "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=600",
-    youtubeId: "a9j_3R1R5pM",
+    youtubeId: "_94CPMjWi9E",
     mentor: "TTrades Education",
   });
 
@@ -46,7 +46,7 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
       title: "1. השווקים השונים בשוק ההון - מבוא למסחר",
       duration: "12:45",
       thumbnail: "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=600",
-      youtubeId: "a9j_3R1R5pM",
+      youtubeId: "_94CPMjWi9E",
       mentor: "TTrades Education",
     },
     {
@@ -54,7 +54,7 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
       title: "2. הנר היפני - אנטומיה ומבנה הנרות",
       duration: "15:20",
       thumbnail: "https://images.unsplash.com/photo-1621761191319-c6fb62004040?w=600",
-      youtubeId: "55n-mrxL6lE",
+      youtubeId: "K-8M8t8C_eE",
       mentor: "TTrades Education",
     },
     {
@@ -62,7 +62,7 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
       title: "3. מגמות למחיר - זיהוי כיוון השוק",
       duration: "14:10",
       thumbnail: "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=600",
-      youtubeId: "8W0Z2K8j2e4",
+      youtubeId: "k2H1z3oZ_m4",
       mentor: "TTrades Education",
     },
     {
@@ -86,7 +86,7 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
       title: "6. מבנה השוק - BOS, CHoCH וסירקולציה",
       duration: "20:50",
       thumbnail: "https://images.unsplash.com/photo-1598257006458-087169a1f08d?w=600",
-      youtubeId: "4m2hZ_8V4yE",
+      youtubeId: "b95dD1V8gJ0",
       mentor: "TTrades Education",
     },
     {
