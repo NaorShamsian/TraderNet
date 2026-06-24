@@ -487,11 +487,11 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
         <View style={[styles.videoPlayerCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
           <View style={styles.videoWindow}>
             {playing ? (
-              /* Embedded YouTube Video Viewer inside WebView with desktop UA, direct Referer header and no-cookie domain to prevent Error 153 */
+              /* Embedded YouTube Video Viewer inside WebView with aligned domain-referrer origins to prevent Error 152 */
               <WebView
                 style={styles.youtubeWebview}
                 source={{ 
-                  uri: `https://www.youtube-nocookie.com/embed/${currentVideo.youtubeId}?autoplay=1&playsinline=1&enablejsapi=1&origin=https://www.youtube.com`,
+                  uri: `https://www.youtube.com/embed/${currentVideo.youtubeId}?autoplay=1&playsinline=1&enablejsapi=1&origin=https://www.youtube.com&widget_referrer=https://www.youtube.com`,
                   headers: {
                     Referer: "https://www.youtube.com"
                   }
