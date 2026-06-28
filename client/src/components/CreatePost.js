@@ -43,7 +43,7 @@ const CreatePost = ({ onPostCreated, groupId, theme, isDarkMode }) => {
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
+        allowsEditing: false,
         quality: 0.8,
       });
 
@@ -66,7 +66,7 @@ const CreatePost = ({ onPostCreated, groupId, theme, isDarkMode }) => {
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-        allowsEditing: true,
+        allowsEditing: false,
         quality: 0.8,
       });
 
