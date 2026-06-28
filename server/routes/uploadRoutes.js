@@ -2,7 +2,7 @@ const express = require("express");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
-const { protect } = require("../middleware/authMiddleware");
+const authMiddleware = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
@@ -54,7 +54,7 @@ const upload = multer({
 });
 
 // Upload endpoint (protected)
-router.post("/", protect, (req, res, next) => {
+router.post("/", authMiddleware, (req, res, next) => {
   // Use custom error handler for multer limits/errors
   upload.single("file")(req, res, (err) => {
     if (err instanceof multer.MulterError) {
