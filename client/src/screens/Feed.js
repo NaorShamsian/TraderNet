@@ -83,17 +83,22 @@ const Feed = ({ onLogout, onNavigate, onStartPrivateChat, onShowUserModal, theme
   const fetchPosts = async () => {
     try {
       const response = await API.get("/posts");
-      setPosts(response.data);
+      if (Array.isArray(response.data)) {
+        setPosts(response.data);
+        setError("");
+      } else {
+        setPosts([]);
+        setError("Invalid server response. Please check if the tunnel is active.");
+      }
 
       const groupsRes = await API.get("/groups");
-      const joinedIds = groupsRes.data
+      const groupsData = Array.isArray(groupsRes.data) ? groupsRes.data : [];
+      const joinedIds = groupsData
         .filter((g) =>
           g.members.some((m) => (m._id || m) === currentUser._id)
         )
         .map((g) => g._id);
       setMyJoinedGroupIds(joinedIds);
-
-      setError("");
     } catch (err) {
       setError("Failed to load feed posts.");
     } finally {
@@ -149,7 +154,12 @@ const Feed = ({ onLogout, onNavigate, onStartPrivateChat, onShowUserModal, theme
           username: searchUsername.trim() || undefined,
         },
       });
-      setPosts(response.data);
+      if (Array.isArray(response.data)) {
+        setPosts(response.data);
+      } else {
+        setPosts([]);
+        setError("Invalid server response. Please check if the tunnel is active.");
+      }
     } catch (err) {
       setError(err.response?.data?.message || "Failed to search posts.");
     } finally {
@@ -424,7 +434,8 @@ const Feed = ({ onLogout, onNavigate, onStartPrivateChat, onShowUserModal, theme
         ) : null}
 
         {(() => {
-          const filteredPosts = posts.filter((post) => {
+          const postsArray = Array.isArray(posts) ? posts : [];
+          const filteredPosts = postsArray.filter((post) => {
             if (feedFilter === "mine") {
               return (
                 post.user &&
