@@ -6,7 +6,7 @@ const Group = require("../models/Group");
 // Create a new post
 const createPost = async (req, res) => {
   try {
-    const { content, image, tags, group } = req.body;
+    const { content, image, video, tags, group } = req.body;
 
     if (!content) {
       return res.status(400).json({ message: "Content is required" });
@@ -46,6 +46,7 @@ const createPost = async (req, res) => {
       user: req.user._id,
       content,
       image,
+      video: video || "",
       tags,
       group: group || null,
     });

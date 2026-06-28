@@ -1,18 +1,35 @@
 import React, { useImperativeHandle } from "react";
 import { StyleSheet, View } from "react-native";
 import { WebView } from "react-native-webview";
+import { Video } from "expo-av";
 
 const VideoPlayer = React.forwardRef(({ source, style, resizeMode, shouldPlay, useNativeControls, onPlaybackStatusUpdate }, ref) => {
   const videoUrl = source?.uri || "";
-  
-  // Convert www.youtube.com to m.youtube.com to load the mobile-optimized page faster
-  const mobileUrl = videoUrl.replace("www.youtube.com", "m.youtube.com");
+  const isYouTube = videoUrl.includes("youtube.com") || videoUrl.includes("youtu.be");
 
   // Expose empty mock ref methods to prevent any parent component lifecycle crashes
   useImperativeHandle(ref, () => ({
     unloadAsync: async () => {},
     loadAsync: async (src, options) => {}
   }));
+
+  if (!isYouTube) {
+    return (
+      <View style={[styles.container, style]}>
+        <Video
+          source={{ uri: videoUrl }}
+          style={styles.nativeVideo}
+          useNativeControls={useNativeControls !== false}
+          resizeMode={resizeMode || "contain"}
+          shouldPlay={shouldPlay !== false}
+          onPlaybackStatusUpdate={onPlaybackStatusUpdate}
+        />
+      </View>
+    );
+  }
+
+  // Convert www.youtube.com to m.youtube.com to load the mobile-optimized page faster
+  const mobileUrl = videoUrl.replace("www.youtube.com", "m.youtube.com");
 
   // JavaScript to inject custom CSS hiding YouTube headers, search boxes, comments, and recommended videos
   const injectedCSS = `
@@ -75,6 +92,10 @@ const styles = StyleSheet.create({
   },
   webview: {
     backgroundColor: "#000",
+    width: "100%",
+    height: "100%",
+  },
+  nativeVideo: {
     width: "100%",
     height: "100%",
   }

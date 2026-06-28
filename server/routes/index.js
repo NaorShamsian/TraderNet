@@ -6,6 +6,7 @@ const statisticsRoutes = require("./statisticsRoutes");
 const chatRoutes = require("./chatRoutes");
 const dmRoutes = require("./dmRoutes");
 const groupChatRoutes = require("./groupChatRoutes");
+const uploadRoutes = require("./uploadRoutes");
 
 const router = express.Router();
 
@@ -20,5 +21,6 @@ router.use("/statistics", statisticsRoutes);
 router.use("/chat", chatRoutes);
 router.use("/dm", dmRoutes);
 router.use("/group-chat", groupChatRoutes);
+router.use("/upload", uploadRoutes);
 
 module.exports = router;

@@ -2,12 +2,26 @@ import React, { useImperativeHandle } from "react";
 
 const VideoPlayer = React.forwardRef(({ source, style, resizeMode, shouldPlay, useNativeControls, onPlaybackStatusUpdate }, ref) => {
   const videoUrl = source?.uri || "";
+  const isYouTube = videoUrl.includes("youtube.com") || videoUrl.includes("youtu.be");
 
   // Expose empty mock ref methods to prevent any parent component lifecycle crashes
   useImperativeHandle(ref, () => ({
     unloadAsync: async () => {},
     loadAsync: async (src, options) => {}
   }));
+
+  if (!isYouTube) {
+    return (
+      <div style={{ width: "100%", height: "100%", backgroundColor: "#000", position: "relative", overflow: "hidden", ...style }}>
+        <video
+          src={videoUrl}
+          controls={useNativeControls !== false}
+          autoPlay={shouldPlay !== false}
+          style={{ width: "100%", height: "100%", objectFit: resizeMode || "contain" }}
+        />
+      </div>
+    );
+  }
 
   // Extract the YouTube video ID from the watch URL
   const getYoutubeId = (url) => {
@@ -22,7 +36,7 @@ const VideoPlayer = React.forwardRef(({ source, style, resizeMode, shouldPlay, u
   const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=${shouldPlay ? 1 : 0}&rel=0&modestbranding=1&controls=${useNativeControls ? 1 : 0}`;
 
   return (
-    <div style={{ width: "100%", height: "100%", backgroundColor: "#000", position: "relative", overflow: "hidden" }}>
+    <div style={{ width: "100%", height: "100%", backgroundColor: "#000", position: "relative", overflow: "hidden", ...style }}>
       <iframe
         src={embedUrl}
         title="YouTube video player"

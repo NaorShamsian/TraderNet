@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import API, { getSessionUser } from "../api";
 import SoundManager from "../utils/SoundManager";
+import VideoPlayer from "./VideoPlayer";
 
 const PostCard = ({ post, onPostUpdated, onEditPress, onPostDeleted, onStartPrivateChat, onNavigate, onShowUserModal, onTagPress, theme, isDarkMode }) => {
   const [commentText, setCommentText] = useState("");
@@ -234,6 +235,18 @@ const PostCard = ({ post, onPostUpdated, onEditPress, onPostDeleted, onStartPriv
           </View>
         ) : null}
 
+        {post.video ? (
+          <View style={styles.videoContainer}>
+            <VideoPlayer
+              source={{ uri: post.video }}
+              style={styles.postVideo}
+              resizeMode="contain"
+              useNativeControls={true}
+              shouldPlay={false}
+            />
+          </View>
+        ) : null}
+
         {/* Tags */}
         {post.tags && post.tags.length > 0 ? (
           <View style={styles.tagsContainer}>
@@ -439,6 +452,18 @@ const styles = StyleSheet.create({
     backgroundColor: "#000",
   },
   postImage: {
+    width: "100%",
+    height: "100%",
+  },
+  videoContainer: {
+    width: "100%",
+    height: 220,
+    borderRadius: 8,
+    overflow: "hidden",
+    marginBottom: 8,
+    backgroundColor: "#000",
+  },
+  postVideo: {
     width: "100%",
     height: "100%",
   },

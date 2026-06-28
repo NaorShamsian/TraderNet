@@ -25,6 +25,7 @@
     "mongodb": "^7.2.0",
     "mongoose": "^8.6.2",
     "morgan": "^1.10.0",
+    "multer": "^2.2.0",
     "nodemailer": "^8.0.10",
     "socket.io": "^4.8.3"
   },
