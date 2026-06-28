@@ -6,6 +6,12 @@ const User = require("../models/User");
 const Conversation = require("../models/Conversation");
 const Group = require("../models/Group");
 
+// Helper function to sanitize phone numbers by stripping non-numeric characters (except "+")
+const sanitizePhoneNumber = (phone) => {
+  if (!phone) return "";
+  return phone.replace(/[^\d+]/g, "");
+};
+
 // Helper function to generate JWT token using process.env.JWT_SECRET
 const generateToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET || "fallback_secret", {
@@ -27,6 +33,8 @@ const createUser = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    const sanitizedPhone = phoneNumber ? sanitizePhoneNumber(phoneNumber) : "";
+
     const user = await User.create({
       fullName,
       email,
@@ -34,7 +42,7 @@ const createUser = async (req, res) => {
       password: hashedPassword,
       role,
       bio,
-      phoneNumber,
+      phoneNumber: sanitizedPhone,
     });
 
     // Do not return password in response
@@ -138,6 +146,10 @@ const updateUser = async (req, res) => {
       }
     });
 
+    if (updateData.phoneNumber !== undefined) {
+      updateData.phoneNumber = sanitizePhoneNumber(updateData.phoneNumber);
+    }
+
     if (Object.keys(updateData).length === 0) {
       return res.status(400).json({ message: "No fields provided for update" });
     }
@@ -209,8 +221,14 @@ const loginUser = async (req, res) => {
       });
     }
 
-    // Check if user exists (finding by email)
-    const user = await User.findOne({ email });
+    // Check if user exists by matching either email or username (case-insensitive)
+    const loginIdentifier = email.trim();
+    const user = await User.findOne({
+      $or: [
+        { email: loginIdentifier.toLowerCase() },
+        { username: { $regex: new RegExp(`^${loginIdentifier}$`, "i") } }
+      ]
+    });
     if (!user) {
       return res.status(401).json({
         message: "Invalid credentials",
@@ -368,11 +386,12 @@ const forgotPassword = async (req, res) => {
       return res.status(400).json({ message: "Invalid method. Supported: 'email', 'sms'" });
     }
 
-    // Find user by either email or phoneNumber
+    // Find user by either email or phoneNumber (sanitized to support iPhone formatting)
+    const cleanPhone = sanitizePhoneNumber(emailOrPhone);
     const user = await User.findOne({
       $or: [
         { email: emailOrPhone.toLowerCase().trim() },
-        { phoneNumber: emailOrPhone.trim() }
+        { phoneNumber: cleanPhone }
       ]
     });
 

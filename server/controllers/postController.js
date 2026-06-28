@@ -275,6 +275,19 @@ const likePost = async (req, res) => {
     } else {
       // Like: add to likes array
       post.likes.push(req.user._id);
+
+      // Emit socket notification to the post owner if they aren't the liker
+      if (post.user.toString() !== userIdStr) {
+        const io = req.app.get("io");
+        if (io) {
+          io.to(`user_${post.user.toString()}`).emit("postLiked", {
+            likerName: req.user.fullName,
+            likerUsername: req.user.username,
+            postId: post._id,
+            postContent: post.content ? (post.content.length > 50 ? post.content.substring(0, 50) + "..." : post.content) : "your post",
+          });
+        }
+      }
     }
 
     await post.save();
@@ -316,6 +329,21 @@ const addComment = async (req, res) => {
     });
 
     await post.save();
+
+    // Emit socket notification to the post owner if they aren't the commenter
+    const userIdStr = req.user._id.toString();
+    if (post.user.toString() !== userIdStr) {
+      const io = req.app.get("io");
+      if (io) {
+        io.to(`user_${post.user.toString()}`).emit("postCommented", {
+          commenterName: req.user.fullName,
+          commenterUsername: req.user.username,
+          postId: post._id,
+          commentText: text.length > 50 ? text.substring(0, 50) + "..." : text,
+          postContent: post.content ? (post.content.length > 50 ? post.content.substring(0, 50) + "..." : post.content) : "your post",
+        });
+      }
+    }
 
     const updatedPost = await Post.findById(post._id)
       .populate("user", "fullName username bio")

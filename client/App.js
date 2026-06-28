@@ -17,7 +17,7 @@ import DMsList from "./src/screens/DMsList";
 import PrivateChat from "./src/screens/PrivateChat";
 import GroupChat from "./src/screens/GroupChat";
 import Navbar from "./src/components/Navbar";
-import API, { setSession, LOCAL_IP } from "./src/api";
+import API, { setSession, BASE_SOCKET_URL } from "./src/api";
 import io from "socket.io-client/dist/socket.io";
 import UserProfile from "./src/screens/UserProfile";
 import UserActionModal from "./src/components/UserActionModal";
@@ -81,7 +81,7 @@ export default function App() {
     };
     fetchRequests();
 
-    const socket = io(`http://${LOCAL_IP}:5000`);
+    const socket = io(BASE_SOCKET_URL);
     socketRef.current = socket;
 
     socket.on("connect", () => {
@@ -147,6 +147,26 @@ export default function App() {
       setIncomingRequests((prev) => prev.filter((r) => r._id !== rejecterId));
     });
 
+    socket.on("postLiked", ({ likerName, likerUsername, postId, postContent }) => {
+      setNotification({
+        id: Date.now().toString(),
+        title: "❤️ Post Liked!",
+        body: `@${likerUsername} (${likerName}) liked your post: "${postContent}"`,
+        type: "post_like",
+      });
+      SoundManager.joinGroup();
+    });
+
+    socket.on("postCommented", ({ commenterName, commenterUsername, postId, commentText, postContent }) => {
+      setNotification({
+        id: Date.now().toString(),
+        title: "💬 New Comment!",
+        body: `@${commenterUsername} commented: "${commentText}" on your post "${postContent}"`,
+        type: "post_comment",
+      });
+      SoundManager.joinGroup();
+    });
+
     socket.on("conversationUpdate", (updatedConv) => {
       const isSending = updatedConv.lastMessageSender === user._id;
       if (!isSending) {
@@ -207,6 +227,8 @@ export default function App() {
       setSelectedConvId(notif.data.conversationId);
       setSelectedPartner(notif.data.partner);
       setCurrentScreen("PrivateChat");
+    } else if (notif.type === "post_like" || notif.type === "post_comment") {
+      setCurrentScreen("Feed");
     }
   };
 

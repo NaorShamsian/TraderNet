@@ -12,7 +12,7 @@ import {
   Alert,
 } from "react-native";
 import io from "socket.io-client/dist/socket.io";
-import API, { getSessionUser, LOCAL_IP } from "../api";
+import API, { getSessionUser, BASE_SOCKET_URL } from "../api";
 import SoundManager from "../utils/SoundManager";
 
 const GroupChat = ({ groupId, onLogout, onNavigate, theme, isDarkMode }) => {
@@ -66,7 +66,7 @@ const GroupChat = ({ groupId, onLogout, onNavigate, theme, isDarkMode }) => {
     initializeChat();
 
     // 2. Establish live Socket.io connection
-    const socket = io(`http://${LOCAL_IP}:5000`);
+    const socket = io(BASE_SOCKET_URL);
     socketRef.current = socket;
 
     socket.on("connect", () => {

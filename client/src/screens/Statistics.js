@@ -11,7 +11,7 @@ import {
   Linking,
   Platform,
 } from "react-native";
-import API, { LOCAL_IP } from "../api";
+import API, { BASE_WEB_URL } from "../api";
 
 const Statistics = ({ onLogout, onNavigate, theme, isDarkMode }) => {
   const [stats, setStats] = useState(null);
@@ -46,7 +46,7 @@ const Statistics = ({ onLogout, onNavigate, theme, isDarkMode }) => {
   }, []);
 
   const openD3WebDashboard = async () => {
-    const webUrl = `http://${LOCAL_IP}:5000/statistics.html`;
+    const webUrl = `${BASE_WEB_URL}/statistics.html`;
     try {
       const supported = await Linking.canOpenURL(webUrl);
       if (supported) {
@@ -114,7 +114,7 @@ const Statistics = ({ onLogout, onNavigate, theme, isDarkMode }) => {
           <Text style={[styles.promoDesc, { color: colors.subText }]}>
             Open the premium web dashboard containing dynamic animated SVG graphs rendered with D3.js.
           </Text>
-          <Text style={[styles.webUrlText, { color: colors.primary }]}>http://{LOCAL_IP}:5000/statistics.html</Text>
+          <Text style={[styles.webUrlText, { color: colors.primary }]}>{BASE_WEB_URL}/statistics.html</Text>
         </TouchableOpacity>
 
         {/* Native Chart 1: Posts per Group */}

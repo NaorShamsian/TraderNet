@@ -6,8 +6,17 @@ import axios from "axios";
 // On Mac/Linux: run 'ifconfig' or check your network preferences.
 export const LOCAL_IP = "192.168.1.89"; // Auto-configured to match your computer's IP!
 
+// Resolve URLs dynamically from environment variables, falling back to local IP for standard local dev
+export const BASE_API_URL = process.env.EXPO_PUBLIC_API_URL || `http://${LOCAL_IP}:5000/api`;
+export const BASE_SOCKET_URL = process.env.EXPO_PUBLIC_SOCKET_URL || `http://${LOCAL_IP}:5000`;
+export const BASE_WEB_URL = process.env.EXPO_PUBLIC_WEB_URL || `http://${LOCAL_IP}:5000`;
+
 const API = axios.create({
-  baseURL: `http://${LOCAL_IP}:5000/api`,
+  baseURL: BASE_API_URL,
+  headers: {
+    "Bypass-Tunnel-Reminder": "true",
+    "ngrok-skip-browser-warning": "true",
+  },
 });
 
 // Session memory storage fallback (cleaner and Expo-safe without external async libraries)
