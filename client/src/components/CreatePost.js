@@ -15,7 +15,6 @@ import SoundManager from "../utils/SoundManager";
 const CreatePost = ({ onPostCreated, groupId, theme, isDarkMode }) => {
   const [content, setContent] = useState("");
   const [image, setImage] = useState("");
-  const [video, setVideo] = useState("");
   const [tagsStr, setTagsStr] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -43,12 +42,13 @@ const CreatePost = ({ onPostCreated, groupId, theme, isDarkMode }) => {
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false,
+        allowsEditing: true,
+        aspect: [4, 3], // Constraint the Aspect Ratio to enable stable image scaling & cropping on Android/iOS
         quality: 0.8,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        await handleUploadFile(result.assets[0].uri, "image");
+        await handleUploadFile(result.assets[0].uri);
       }
     } catch (err) {
       console.error("Image selection failed", err);
@@ -56,44 +56,16 @@ const CreatePost = ({ onPostCreated, groupId, theme, isDarkMode }) => {
     }
   };
 
-  const handlePickVideo = async () => {
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permission Denied", "We need media library access permissions to select videos!");
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-        allowsEditing: false,
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        await handleUploadFile(result.assets[0].uri, "video");
-      }
-    } catch (err) {
-      console.error("Video selection failed", err);
-      Alert.alert("Error", "Failed to select video from gallery.");
-    }
-  };
-
-  const handleUploadFile = async (localUri, fileType) => {
+  const handleUploadFile = async (localUri) => {
     setUploading(true);
     setError("");
     try {
       const formData = new FormData();
-      const filename = localUri.split("/").pop() || "upload-media";
+      const filename = localUri.split("/").pop() || "upload-media.jpg";
       
       const match = /\.(\w+)$/.exec(filename);
-      const ext = match ? match[1] : "";
-      let type = "";
-      if (fileType === "image") {
-        type = ext ? `image/${ext}` : "image/jpeg";
-      } else {
-        type = ext ? `video/${ext}` : "video/mp4";
-      }
+      const ext = match ? match[1] : "jpg";
+      const type = `image/${ext}`;
 
       formData.append("file", {
         uri: localUri,
@@ -107,17 +79,11 @@ const CreatePost = ({ onPostCreated, groupId, theme, isDarkMode }) => {
         },
       });
 
-      if (fileType === "image") {
-        setImage(response.data.url);
-        setVideo(""); // clear video to post only one media type
-      } else {
-        setVideo(response.data.url);
-        setImage(""); // clear image to post only one media type
-      }
+      setImage(response.data.url);
       SoundManager.profitTarget();
     } catch (err) {
-      console.error("File upload failed", err);
-      setError(err.response?.data?.message || "Failed to upload media file to server.");
+      console.error("Image upload failed", err);
+      setError(err.response?.data?.message || "Failed to upload image file to server.");
       SoundManager.error();
     } finally {
       setUploading(false);
@@ -142,14 +108,12 @@ const CreatePost = ({ onPostCreated, groupId, theme, isDarkMode }) => {
       const response = await API.post("/posts", {
         content: content.trim(),
         image: image,
-        video: video,
         tags,
         group: groupId || null,
       });
 
       setContent("");
       setImage("");
-      setVideo("");
       setTagsStr("");
       SoundManager.postCreated();
 
@@ -184,24 +148,15 @@ const CreatePost = ({ onPostCreated, groupId, theme, isDarkMode }) => {
       {uploading && (
         <View style={styles.uploadingContainer}>
           <ActivityIndicator size="small" color={colors.primary} />
-          <Text style={[styles.uploadingText, { color: colors.subText }]}>Uploading media file...</Text>
+          <Text style={[styles.uploadingText, { color: colors.subText }]}>Uploading image file...</Text>
         </View>
       )}
 
-      {/* Media previews */}
+      {/* Media preview */}
       {image ? (
         <View style={[styles.previewContainer, { borderColor: colors.border }]}>
           <Text style={[styles.previewLabel, { color: colors.primary }]}>🖼️ Attached Image</Text>
           <TouchableOpacity style={styles.removeMediaBtn} onPress={() => setImage("")}>
-            <Text style={styles.removeMediaText}>Remove ❌</Text>
-          </TouchableOpacity>
-        </View>
-      ) : null}
-
-      {video ? (
-        <View style={[styles.previewContainer, { borderColor: colors.border }]}>
-          <Text style={[styles.previewLabel, { color: colors.primary }]}>🎥 Attached Video</Text>
-          <TouchableOpacity style={styles.removeMediaBtn} onPress={() => setVideo("")}>
             <Text style={styles.removeMediaText}>Remove ❌</Text>
           </TouchableOpacity>
         </View>
@@ -213,19 +168,23 @@ const CreatePost = ({ onPostCreated, groupId, theme, isDarkMode }) => {
           onPress={handlePickImage}
           disabled={uploading}
         >
-          <Text style={[styles.mediaBtnText, { color: colors.text }]}>🖼️ Image</Text>
+          <Text style={[styles.mediaBtnText, { color: colors.text }]}>🖼️ Pick Image</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.mediaBtn, { backgroundColor: colors.inputBg, borderColor: colors.border }]}
-          onPress={handlePickVideo}
-          disabled={uploading}
-        >
-          <Text style={[styles.mediaBtnText, { color: colors.text }]}>🎥 Video</Text>
-        </TouchableOpacity>
-        
         <TextInput
           style={[styles.input, styles.metaInput, { backgroundColor: colors.inputBg, color: colors.inputText, borderColor: colors.border }]}
+          placeholder="Or paste Image/Chart URL"
+          placeholderTextColor={isDarkMode ? "#9ca3af" : "#64748b"}
+          autoCapitalize="none"
+          autoCorrect={false}
+          value={image}
+          onChangeText={setImage}
+        />
+      </View>
+
+      <View style={styles.metaRow}>
+        <TextInput
+          style={[styles.input, { flex: 1, backgroundColor: colors.inputBg, color: colors.inputText, borderColor: colors.border }]}
           placeholder="Tags (separated by commas)"
           placeholderTextColor={isDarkMode ? "#9ca3af" : "#64748b"}
           autoCapitalize="none"
@@ -334,7 +293,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     justifyContent: "center",
     alignItems: "center",
-    flex: 0.7,
+    flex: 0.8,
   },
   mediaBtnText: {
     fontSize: 12,
@@ -348,7 +307,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   metaInput: {
-    flex: 1.6,
+    flex: 1.5,
   },
   actionRow: {
     flexDirection: "row",
