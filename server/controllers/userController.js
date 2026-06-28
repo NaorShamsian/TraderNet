@@ -3,6 +3,8 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const User = require("../models/User");
+const Conversation = require("../models/Conversation");
+const Group = require("../models/Group");
 
 // Helper function to generate JWT token using process.env.JWT_SECRET
 const generateToken = (userId) => {
@@ -66,6 +68,9 @@ const getUsers = async (req, res) => {
     // Sanitize private fields for other users
     const sanitizedUsers = users.map((user) => {
       const userObj = user.toObject();
+      if (req.user._id.toString() !== userObj._id.toString()) {
+        userObj.isOutgoingRequest = user.friendRequests && user.friendRequests.some((r) => r.toString() === req.user._id.toString());
+      }
       if (req.user._id.toString() !== userObj._id.toString() && req.user.role !== "admin") {
         delete userObj.email;
         delete userObj.phoneNumber;
@@ -99,6 +104,9 @@ const getUserById = async (req, res) => {
 
     // Sanitize private fields if the requester is not the user themselves and not a site admin
     const userObj = user.toObject();
+    if (req.user._id.toString() !== id) {
+      userObj.isOutgoingRequest = user.friendRequests && user.friendRequests.some((r) => r.toString() === req.user._id.toString());
+    }
     if (req.user._id.toString() !== id && req.user.role !== "admin") {
       delete userObj.email;
       delete userObj.phoneNumber;
@@ -220,6 +228,11 @@ const loginUser = async (req, res) => {
     // Generate JWT token
     const token = generateToken(user._id);
 
+    // Update login timestamps
+    user.previousLoginAt = user.lastLoginAt || Date.now();
+    user.lastLoginAt = Date.now();
+    await user.save();
+
     // Prepare response, omitting password
     const userResponse = user.toObject();
     delete userResponse.password;
@@ -323,6 +336,9 @@ const searchUsers = async (req, res) => {
     // Sanitize private fields for other users
     const sanitizedUsers = users.map((user) => {
       const userObj = user.toObject();
+      if (req.user._id.toString() !== userObj._id.toString()) {
+        userObj.isOutgoingRequest = user.friendRequests && user.friendRequests.some((r) => r.toString() === req.user._id.toString());
+      }
       if (req.user._id.toString() !== userObj._id.toString() && req.user.role !== "admin") {
         delete userObj.email;
         delete userObj.phoneNumber;
@@ -730,6 +746,8 @@ const acceptFriendRequest = async (req, res) => {
       // Notify the sender that the request was accepted
       io.to(`user_${id}`).emit("friendRequestAccepted", {
         friendId: req.user._id,
+        friendName: user.fullName,
+        friendUsername: user.username,
       });
       // Also notify recipient's own socket room if online to sync UI elsewhere
       io.to(`user_${req.user._id}`).emit("friendRequestCancelled", {
@@ -811,6 +829,73 @@ const removeFriend = async (req, res) => {
   }
 };
 
+// Get digest summary of what happened since previousLoginAt
+const getMeDigest = async (req, res) => {
+  try {
+    const user = req.user;
+    const previousLoginAt = user.previousLoginAt || user.createdAt;
+
+    // 1. Pending connection requests count (friend requests)
+    const pendingFriendRequestsCount = user.friendRequests.length;
+
+    // 2. Fetch unread direct messages (since previousLoginAt from other users)
+    const conversations = await Conversation.find({
+      participants: user._id,
+      lastMessageAt: { $gt: previousLoginAt },
+      lastMessageSender: { $ne: user._id }
+    }).populate("lastMessageSender", "fullName username");
+
+    const newMessages = conversations.map((conv) => ({
+      conversationId: conv._id,
+      senderUsername: conv.lastMessageSender?.username || "user",
+      senderFullName: conv.lastMessageSender?.fullName || "Trader",
+      lastMessageText: conv.lastMessageText,
+      lastMessageAt: conv.lastMessageAt,
+    }));
+
+    // 3. Fetch activity logs in groups where user is admin or creator
+    const managedGroups = await Group.find({
+      $or: [
+        { admin: user._id },
+        { creator: user._id }
+      ]
+    });
+
+    const pendingJoinRequestsCount = managedGroups.reduce((acc, g) => acc + (g.pendingRequests ? g.pendingRequests.length : 0), 0);
+
+    const logs = [];
+    managedGroups.forEach((group) => {
+      if (group.activityLogs) {
+        group.activityLogs.forEach((log) => {
+          if (new Date(log.timestamp) > new Date(previousLoginAt)) {
+            logs.push({
+              groupId: group._id,
+              groupName: group.name,
+              userId: log.userId,
+              username: log.username,
+              action: log.action,
+              timestamp: log.timestamp
+            });
+          }
+        });
+      }
+    });
+
+    // Sort logs newest first
+    logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    return res.status(200).json({
+      pendingFriendRequestsCount,
+      newMessages,
+      pendingJoinRequestsCount,
+      logs,
+      previousLoginAt,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to compile digest" });
+  }
+};
+
 module.exports = {
   createUser,
   getUsers,
@@ -831,4 +916,6 @@ module.exports = {
   acceptFriendRequest,
   rejectFriendRequest,
   removeFriend,
+  getMeDigest,
 };
+

@@ -57,6 +57,14 @@ const userSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
+    lastLoginAt: {
+      type: Date,
+      default: Date.now,
+    },
+    previousLoginAt: {
+      type: Date,
+      default: Date.now,
+    },
   },
   {
     timestamps: true,

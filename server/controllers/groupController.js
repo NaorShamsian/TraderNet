@@ -230,6 +230,12 @@ const joinGroup = async (req, res) => {
     if (group.privacy === "public") {
       // Immediately join
       group.members.push(userId);
+      group.activityLogs.push({
+        userId,
+        username: req.user.username,
+        action: "joined",
+        timestamp: Date.now(),
+      });
       await group.save();
       const updatedGroup = await Group.findById(id)
         .populate("creator", "fullName username")
@@ -300,6 +306,12 @@ const leaveGroup = async (req, res) => {
 
     // Remove user
     group.members = group.members.filter((m) => m.toString() !== userId.toString());
+    group.activityLogs.push({
+      userId,
+      username: req.user.username,
+      action: "left",
+      timestamp: Date.now(),
+    });
     await group.save();
 
     const updatedGroup = await Group.findById(id)
@@ -348,6 +360,14 @@ const approveJoinRequest = async (req, res) => {
       (r) => r.toString() !== userId.toString()
     );
     group.members.push(userId);
+
+    const approvedUser = await User.findById(userId);
+    group.activityLogs.push({
+      userId,
+      username: approvedUser ? approvedUser.username : "user",
+      action: "joined",
+      timestamp: Date.now(),
+    });
     await group.save();
 
     const updatedGroup = await Group.findById(id)
@@ -448,6 +468,14 @@ const removeGroupMember = async (req, res) => {
 
     // Remove from members
     group.members = group.members.filter((m) => m.toString() !== userId.toString());
+
+    const removedUser = await User.findById(userId);
+    group.activityLogs.push({
+      userId,
+      username: removedUser ? removedUser.username : "user",
+      action: "left",
+      timestamp: Date.now(),
+    });
     await group.save();
 
     const updatedGroup = await Group.findById(id)
@@ -499,7 +527,24 @@ const promoteMemberToStaff = async (req, res) => {
 
     // Add to staff list
     group.staff.push(userId);
+
+    const promotedUser = await User.findById(userId);
+    group.activityLogs.push({
+      userId,
+      username: promotedUser ? promotedUser.username : "user",
+      action: "promoted",
+      timestamp: Date.now(),
+    });
     await group.save();
+
+    // Emit live socket event to the promoted user
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`user_${userId}`).emit("staffPromoted", {
+        groupId: group._id,
+        groupName: group.name,
+      });
+    }
 
     const updatedGroup = await Group.findById(id)
       .populate("creator", "fullName username")
@@ -544,6 +589,14 @@ const demoteMemberToListener = async (req, res) => {
 
     // Remove from staff list
     group.staff = group.staff.filter((s) => s.toString() !== userId.toString());
+
+    const demotedUser = await User.findById(userId);
+    group.activityLogs.push({
+      userId,
+      username: demotedUser ? demotedUser.username : "user",
+      action: "demoted",
+      timestamp: Date.now(),
+    });
     await group.save();
 
     const updatedGroup = await Group.findById(id)
@@ -562,6 +615,47 @@ const demoteMemberToListener = async (req, res) => {
   }
 };
 
+// Cancel a pending join request by the user themselves
+const cancelJoinRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid group id" });
+    }
+
+    const group = await Group.findById(id);
+    if (!group) {
+      return res.status(404).json({ message: "Group not found" });
+    }
+
+    const isPending = group.pendingRequests.some((r) => r.toString() === userId.toString());
+    if (!isPending) {
+      return res.status(400).json({ message: "No pending request found for your account" });
+    }
+
+    group.pendingRequests = group.pendingRequests.filter(
+      (r) => r.toString() !== userId.toString()
+    );
+    await group.save();
+
+    const updatedGroup = await Group.findById(id)
+      .populate("creator", "fullName username")
+      .populate("admin", "fullName username")
+      .populate("members", "fullName username")
+      .populate("staff", "fullName username")
+      .populate("pendingRequests", "fullName username");
+
+    return res.status(200).json({
+      message: "Join request cancelled successfully",
+      group: updatedGroup,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to cancel join request" });
+  }
+};
+
 module.exports = {
   createGroup,
   getGroups,
@@ -576,4 +670,6 @@ module.exports = {
   removeGroupMember,
   promoteMemberToStaff,
   demoteMemberToListener,
+  cancelJoinRequest,
 };
+

@@ -50,6 +50,23 @@ const groupSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
+    activityLogs: [
+      {
+        userId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        username: String,
+        action: {
+          type: String,
+          enum: ["joined", "left", "promoted", "demoted"],
+        },
+        timestamp: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
   {
     timestamps: true,

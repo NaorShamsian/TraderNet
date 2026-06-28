@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   StyleSheet,
   Text,
@@ -11,13 +11,15 @@ import {
   ActivityIndicator,
   Platform,
 } from "react-native";
+import VideoPlayer from "../components/VideoPlayer";
 import { WebView } from "react-native-webview";
 
 const { width } = Dimensions.get("window");
 
 const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
   const [activeTab, setActiveTab] = useState("video"); // 'video' or 'terminal'
-  const [playing, setPlaying] = useState(false);
+  const [started, setStarted] = useState(false); // Tracks if the video has started playing at least once
+  const videoRef = useRef(null);
 
   const colors = theme || {
     bg: isDarkMode ? "#0b0f19" : "#f8fafc",
@@ -30,90 +32,90 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
     primary: "#6366f1",
   };
 
-  // ================= VIDEO PLAYER STATE & SYLLABUS (TTRADES ONLY) =================
+  // ================= VIDEO PLAYER STATE & SYLLABUS (OFFICIAL YOUTUBE EMBEDS) =================
   const [currentVideo, setCurrentVideo] = useState({
     id: 1,
-    title: "1. השווקים השונים בשוק ההון - מבוא למסחר",
-    duration: "12:45",
-    thumbnail: "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=600",
-    youtubeId: "_94CPMjWi9E",
-    mentor: "TTrades Education",
+    title: "1. מבוא למבנה השוק - אנטומיה ומבנה השוק",
+    duration: "15:20",
+    thumbnail: "https://img.youtube.com/vi/Qt7Ek4keMzs/hqdefault.jpg",
+    videoUrl: "https://www.youtube.com/watch?v=Qt7Ek4keMzs",
+    mentor: "Rayner Teo",
   });
 
   const lessons = [
     {
       id: 1,
-      title: "1. השווקים השונים בשוק ההון - מבוא למסחר",
-      duration: "12:45",
-      thumbnail: "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=600",
-      youtubeId: "_94CPMjWi9E",
-      mentor: "TTrades Education",
+      title: "1. מבוא למבנה השוק - אנטומיה ומבנה השוק",
+      duration: "15:20",
+      thumbnail: "https://img.youtube.com/vi/Qt7Ek4keMzs/hqdefault.jpg",
+      videoUrl: "https://www.youtube.com/watch?v=Qt7Ek4keMzs",
+      mentor: "Rayner Teo",
     },
     {
       id: 2,
-      title: "2. הנר היפני - אנטומיה ומבנה הנרות",
-      duration: "15:20",
-      thumbnail: "https://images.unsplash.com/photo-1621761191319-c6fb62004040?w=600",
-      youtubeId: "K-8M8t8C_eE",
+      title: "2. מבנה השוק המתקדם - BOS vs CHoCH",
+      duration: "16:22",
+      thumbnail: "https://img.youtube.com/vi/umyCqr_0NsI/hqdefault.jpg",
+      videoUrl: "https://www.youtube.com/watch?v=umyCqr_0NsI",
       mentor: "TTrades Education",
     },
     {
       id: 3,
-      title: "3. מגמות למחיר - זיהוי כיוון השוק",
-      duration: "14:10",
-      thumbnail: "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=600",
-      youtubeId: "k2H1z3oZ_m4",
+      title: "3. מתיחה ושינוי כיוון - Market Structure Shift",
+      duration: "12:45",
+      thumbnail: "https://img.youtube.com/vi/KoZ_szKQ-Yk/hqdefault.jpg",
+      videoUrl: "https://www.youtube.com/watch?v=KoZ_szKQ-Yk",
       mentor: "TTrades Education",
     },
     {
       id: 4,
-      title: "4. תמיכה והתנגדות - מיפוי רמות מפתח",
-      duration: "18:35",
-      thumbnail: "https://images.unsplash.com/photo-1642390091310-70f1a55d6a09?w=600",
-      youtubeId: "F3_mP-jN_zM",
+      title: "4. הנזילות בשוק - Buyside & Sellside Liquidity",
+      duration: "15:30",
+      thumbnail: "https://img.youtube.com/vi/U8xH2dEgH5A/hqdefault.jpg",
+      videoUrl: "https://www.youtube.com/watch?v=U8xH2dEgH5A",
       mentor: "TTrades Education",
     },
     {
       id: 5,
-      title: "5. ביאס שבועי - קביעת כיוון שבועי ויומי",
-      duration: "22:15",
-      thumbnail: "https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=600",
-      youtubeId: "WJ3T9s5P6bA",
+      title: "5. נזילות פנימית וחיצונית - Internal & External Liquidity",
+      duration: "18:10",
+      thumbnail: "https://img.youtube.com/vi/3OivsP1j_UE/hqdefault.jpg",
+      videoUrl: "https://www.youtube.com/watch?v=3OivsP1j_UE&t=430s",
       mentor: "TTrades Education",
     },
     {
       id: 6,
-      title: "6. מבנה השוק - BOS, CHoCH וסירקולציה",
-      duration: "20:50",
-      thumbnail: "https://images.unsplash.com/photo-1598257006458-087169a1f08d?w=600",
-      youtubeId: "b95dD1V8gJ0",
+      title: "6. רמות נזילות מפתח - Draw On Liquidity",
+      duration: "22:40",
+      thumbnail: "https://img.youtube.com/vi/MmvC4rsmmcM/hqdefault.jpg",
+      videoUrl: "https://www.youtube.com/watch?v=MmvC4rsmmcM",
       mentor: "TTrades Education",
     },
     {
       id: 7,
-      title: "7. ניהול סיכונים - המפתח להישרדות ורווחיות",
-      duration: "16:30",
-      thumbnail: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=600",
-      youtubeId: "k-O3l7g7yP0",
+      title: "7. בלוקי פקודות - Order Blocks Simplified",
+      duration: "17:15",
+      thumbnail: "https://img.youtube.com/vi/DMUiDBnTYc8/hqdefault.jpg",
+      videoUrl: "https://www.youtube.com/watch?v=DMUiDBnTYc8",
       mentor: "TTrades Education",
     },
     {
       id: 8,
-      title: "8. פסיכולוגיית מסחר - לשלוט ברגשות בתוך העסקה",
-      duration: "13:40",
-      thumbnail: "https://images.unsplash.com/photo-1607863680198-23d4b2565df0?w=600",
-      youtubeId: "8f3G9_j2wNk",
+      title: "8. שינוי במצב השוק - Change In State Of Delivery (CISD)",
+      duration: "19:50",
+      thumbnail: "https://img.youtube.com/vi/bClInAQZS3k/hqdefault.jpg",
+      videoUrl: "https://www.youtube.com/watch?v=bClInAQZS3k",
       mentor: "TTrades Education",
     },
   ];
 
   const handlePlayLesson = (lesson) => {
     setCurrentVideo(lesson);
-    setPlaying(true);
+    setStarted(true);
   };
 
   const handlePlayPause = () => {
-    setPlaying(true);
+    setStarted(true);
   };
 
   // ================= WEBVIEW TRADING TERMINAL HTML =================
@@ -486,25 +488,22 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         <View style={[styles.videoPlayerCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
           <View style={styles.videoWindow}>
-            {playing ? (
-              /* Embedded YouTube Video Viewer inside WebView with aligned domain-referrer origins to prevent Error 152 */
-              <WebView
-                style={styles.youtubeWebview}
-                source={{ 
-                  uri: `https://www.youtube.com/embed/${currentVideo.youtubeId}?autoplay=1&playsinline=1&enablejsapi=1&origin=https://www.youtube.com&widget_referrer=https://www.youtube.com`,
-                  headers: {
-                    Referer: "https://www.youtube.com"
+            {/* Render the video player only when started is true to avoid native rendering & touch event conflicts */}
+            {started ? (
+              <VideoPlayer
+                ref={videoRef}
+                source={{ uri: currentVideo.videoUrl }}
+                style={StyleSheet.absoluteFill}
+                resizeMode="contain"
+                shouldPlay={true}
+                useNativeControls={true}
+                onPlaybackStatusUpdate={(status) => {
+                  if (status.isLoaded && status.didJustFinish) {
+                    setStarted(false);
                   }
                 }}
-                javaScriptEnabled={true}
-                domStorageEnabled={true}
-                allowsFullscreenVideo={true}
-                allowsInlineMediaPlayback={true}
-                mediaPlaybackRequiresUserAction={false}
-                userAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
               />
             ) : (
-              /* Simulated premium cover before clicking play */
               <View style={styles.thumbnailOverlay}>
                 <Image
                   source={{ uri: currentVideo.thumbnail }}
@@ -513,9 +512,7 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
                 />
                 <View style={styles.darkenCover} />
                 
-                <View style={styles.instructorTag}>
-                  <Text style={styles.instructorText}>MENTOR: {currentVideo.mentor.toUpperCase()}</Text>
-                </View>
+                {/* Mentor overlay label hidden as requested */}
 
                 <TouchableOpacity style={styles.bigPlayBtn} onPress={handlePlayPause}>
                   <Text style={styles.bigPlayBtnText}>▶</Text>
@@ -527,13 +524,13 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
           </View>
 
           <View style={styles.playerMeta}>
+            {/* Keep the Hebrew title so the user recognizes the video they entered */}
             <Text style={[styles.currentVideoTitle, { color: colors.text }]}>{currentVideo.title}</Text>
-            <Text style={[styles.currentVideoMentor, { color: colors.subText }]}>Course Instructor: {currentVideo.mentor} • Length: {currentVideo.duration}</Text>
           </View>
         </View>
 
         {/* Course Outline List */}
-        <Text style={[styles.subHeading, { color: colors.text }]}>Educational Syllabus (Chronological Order)</Text>
+        <Text style={[styles.subHeading, { color: colors.text }]}>סילבוס הלימודים (לפי סדר כרונולוגי)</Text>
         {lessons.map((lesson) => {
           const isSelected = currentVideo.id === lesson.id;
           return (
@@ -544,21 +541,36 @@ const LearningHub = ({ onLogout, onNavigate, theme, isDarkMode }) => {
                 { backgroundColor: colors.cardBg, borderColor: colors.border },
                 isSelected && { 
                   borderColor: colors.primary, 
-                  backgroundColor: isDarkMode ? "rgba(99, 102, 241, 0.1)" : "rgba(99, 102, 241, 0.04)" 
+                  backgroundColor: isDarkMode ? "rgba(99, 102, 241, 0.12)" : "rgba(99, 102, 241, 0.05)",
+                  shadowColor: colors.primary,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 4,
+                  elevation: 2,
                 },
               ]}
               onPress={() => handlePlayLesson(lesson)}
             >
-              <Image source={{ uri: lesson.thumbnail }} style={styles.lessonThumb} />
+              <View style={styles.lessonThumbContainer}>
+                <Image source={{ uri: lesson.thumbnail }} style={styles.lessonThumb} />
+                {isSelected && (
+                  <View style={styles.activePlayOverlay}>
+                    <Text style={styles.activePlayIcon}>▶</Text>
+                  </View>
+                )}
+              </View>
               <View style={styles.lessonMeta}>
-                <Text style={[styles.lessonTitle, { color: colors.text }]} numberOfLines={1}>
+                <Text style={[styles.lessonTitle, { color: colors.text }]}>
                   {lesson.title}
                 </Text>
-                <Text style={[styles.lessonInstructor, { color: colors.subText }]}>By {lesson.mentor}</Text>
-                <Text style={[styles.lessonDuration, { color: colors.primary }]}>⏳ {lesson.duration} minutes</Text>
+                <Text style={[styles.lessonDuration, { color: colors.subText }]}>
+                  ⏳ {lesson.duration} דקות • {lesson.mentor}
+                </Text>
               </View>
               {isSelected && (
-                <Text style={[styles.activeCheck, { color: colors.primary }]}>Active</Text>
+                <View style={[styles.activeBadge, { backgroundColor: colors.primary }]}>
+                  <Text style={styles.activeBadgeText}>פעיל</Text>
+                </View>
               )}
             </TouchableOpacity>
           );
@@ -620,6 +632,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#000",
     position: "relative",
   },
+  videoPlayer: {
+    width: "100%",
+    height: "100%",
+  },
   youtubeWebview: {
     width: "100%",
     height: "100%",
@@ -633,6 +649,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: "center",
     alignItems: "center",
+    zIndex: 10,
   },
   videoThumbnail: {
     position: "absolute",
@@ -707,36 +724,67 @@ const styles = StyleSheet.create({
   },
   lessonCard: {
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 10,
+    borderRadius: 14,
+    padding: 12,
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 12,
+    position: "relative",
+  },
+  lessonThumbContainer: {
+    position: "relative",
+    width: 80,
+    height: 60,
+    borderRadius: 10,
+    overflow: "hidden",
+    backgroundColor: "#000",
   },
   lessonThumb: {
-    width: 65,
-    height: 50,
-    borderRadius: 8,
+    width: "100%",
+    height: "100%",
+  },
+  activePlayOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(99, 102, 241, 0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  activePlayIcon: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "bold",
   },
   lessonMeta: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: 14,
+    marginRight: 8,
+    justifyContent: "center",
   },
   lessonTitle: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "700",
-  },
-  lessonInstructor: {
-    fontSize: 10,
-    marginTop: 2,
+    lineHeight: 18,
+    textAlign: "left",
   },
   lessonDuration: {
-    fontSize: 9,
-    fontWeight: "700",
-    marginTop: 2,
+    fontSize: 10,
+    fontWeight: "600",
+    marginTop: 6,
   },
-  activeCheck: {
-    fontSize: 11,
+  activeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  activeBadgeText: {
+    color: "#ffffff",
+    fontSize: 9,
     fontWeight: "800",
   },
 

@@ -19,6 +19,8 @@ import GroupChat from "./src/screens/GroupChat";
 import Navbar from "./src/components/Navbar";
 import API, { setSession, LOCAL_IP } from "./src/api";
 import io from "socket.io-client/dist/socket.io";
+import UserProfile from "./src/screens/UserProfile";
+import UserActionModal from "./src/components/UserActionModal";
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState("Login");
@@ -28,6 +30,20 @@ export default function App() {
   const [selectedConvId, setSelectedConvId] = useState(null);
   const [selectedPartner, setSelectedPartner] = useState(null);
   const [selectedTagFilter, setSelectedTagFilter] = useState("");
+
+  // Custom user action modal states
+  const [selectedUserProfileId, setSelectedUserProfileId] = useState(null);
+  const [userModalVisible, setUserModalVisible] = useState(false);
+  const [modalUser, setModalUser] = useState(null);
+  const [modalGroupContext, setModalGroupContext] = useState(null);
+  const [homeEvents, setHomeEvents] = useState([]);
+  const [digestChecked, setDigestChecked] = useState(false);
+
+  const handleShowUserModal = (targetUser, groupCtx = null) => {
+    setModalUser(targetUser);
+    setModalGroupContext(groupCtx);
+    setUserModalVisible(true);
+  };
 
   // Global Real-time connection states
   const socketRef = useRef(null);
@@ -92,9 +108,38 @@ export default function App() {
       setIncomingRequests((prev) => prev.filter((r) => r._id !== senderId));
     });
 
-    socket.on("friendRequestAccepted", ({ friendId }) => {
+    socket.on("friendRequestAccepted", ({ friendId, friendName, friendUsername }) => {
       setPendingRequestsCount((prev) => Math.max(0, prev - 1));
       setIncomingRequests((prev) => prev.filter((r) => r._id !== friendId));
+
+      SoundManager.profitTarget();
+      setHomeEvents((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          type: "friend_approved",
+          title: "🤝 Connection Request Approved!",
+          body: `@${friendUsername || "User"} accepted your connection request. You are now friends!`,
+          targetScreen: "DMsList",
+          color: "success",
+        }
+      ]);
+    });
+
+    socket.on("staffPromoted", ({ groupId, groupName }) => {
+      SoundManager.profitTarget();
+      setHomeEvents((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          type: "staff_promoted",
+          title: "🛡️ Appointed to Staff!",
+          body: `You have been appointed to the Staff of group "${groupName}"!`,
+          targetScreen: "GroupDetails",
+          param: groupId,
+          color: "primary",
+        }
+      ]);
     });
 
     socket.on("friendRequestRejected", ({ rejecterId }) => {
@@ -192,6 +237,7 @@ export default function App() {
   const handleLoginSuccess = (userToken, userData) => {
     setToken(userToken);
     setUser(userData);
+    setDigestChecked(false);
     SoundManager.loginSuccess();
     setCurrentScreen("Feed");
   };
@@ -206,6 +252,7 @@ export default function App() {
     setSelectedConvId(null);
     setSelectedPartner(null);
     setSelectedTagFilter("");
+    setDigestChecked(false);
     setCurrentScreen("Login");
   };
 
@@ -237,6 +284,8 @@ export default function App() {
         setSelectedPartner(param.partner);
       } else if (screen === "Feed") {
         setSelectedTagFilter(param);
+      } else if (screen === "UserProfile") {
+        setSelectedUserProfileId(param);
       }
     } else {
       if (screen === "Feed") {
@@ -271,12 +320,17 @@ export default function App() {
             onLogout={handleLogout}
             onNavigate={handleNavigate}
             onStartPrivateChat={handleStartPrivateChat}
+            onShowUserModal={handleShowUserModal}
             theme={colors}
             isDarkMode={isDarkMode}
             initialTagFilter={selectedTagFilter}
             onClearTagFilter={() => setSelectedTagFilter("")}
             incomingRequests={incomingRequests}
             friendRequestsCount={pendingRequestsCount}
+            homeEvents={homeEvents}
+            onDismissEvent={(eventId) => setHomeEvents((prev) => prev.filter((ev) => ev.id !== eventId))}
+            digestChecked={digestChecked}
+            onMarkDigestChecked={() => setDigestChecked(true)}
           />
         );
       case "Profile":
@@ -285,6 +339,19 @@ export default function App() {
             onLogout={handleLogout}
             onNavigate={handleNavigate}
             onStartPrivateChat={handleStartPrivateChat}
+            onShowUserModal={handleShowUserModal}
+            theme={colors}
+            isDarkMode={isDarkMode}
+          />
+        );
+      case "UserProfile":
+        return (
+          <UserProfile
+            userId={selectedUserProfileId}
+            onLogout={handleLogout}
+            onNavigate={handleNavigate}
+            onStartPrivateChat={handleStartPrivateChat}
+            onShowUserModal={handleShowUserModal}
             theme={colors}
             isDarkMode={isDarkMode}
           />
@@ -295,6 +362,7 @@ export default function App() {
             onLogout={handleLogout}
             onNavigate={handleNavigate}
             onStartPrivateChat={handleStartPrivateChat}
+            onShowUserModal={handleShowUserModal}
             theme={colors}
             isDarkMode={isDarkMode}
           />
@@ -305,6 +373,7 @@ export default function App() {
             onLogout={handleLogout}
             onNavigate={handleNavigate}
             onStartPrivateChat={handleStartPrivateChat}
+            onShowUserModal={handleShowUserModal}
             theme={colors}
             isDarkMode={isDarkMode}
           />
@@ -316,6 +385,7 @@ export default function App() {
             onLogout={handleLogout}
             onNavigate={handleNavigate}
             onStartPrivateChat={handleStartPrivateChat}
+            onShowUserModal={handleShowUserModal}
             theme={colors}
             isDarkMode={isDarkMode}
           />
@@ -326,6 +396,7 @@ export default function App() {
             onLogout={handleLogout}
             onNavigate={handleNavigate}
             onStartPrivateChat={handleStartPrivateChat}
+            onShowUserModal={handleShowUserModal}
             theme={colors}
             isDarkMode={isDarkMode}
           />
@@ -471,6 +542,18 @@ export default function App() {
       <View style={{ flex: 1 }}>
         {renderScreen()}
       </View>
+
+      <UserActionModal
+        visible={userModalVisible}
+        user={modalUser}
+        onClose={() => setUserModalVisible(false)}
+        onStartPrivateChat={handleStartPrivateChat}
+        onNavigate={handleNavigate}
+        currentUser={user}
+        colors={colors}
+        isDarkMode={isDarkMode}
+        groupContext={modalGroupContext}
+      />
 
       {showChrome && (
         <Navbar 

@@ -19,6 +19,7 @@ const {
   acceptFriendRequest,
   rejectFriendRequest,
   removeFriend,
+  getMeDigest,
 } = require("../controllers/userController");
 const authMiddleware = require("../middleware/authMiddleware");
 const adminMiddleware = require("../middleware/adminMiddleware");
@@ -33,6 +34,7 @@ router.post("/reset-password", resetPassword);
 router.get("/", authMiddleware, getUsers);
 
 // Put /me and /search before /:id so Express handles them correctly
+router.get("/me/digest", authMiddleware, getMeDigest);
 router.get("/me", authMiddleware, getMe);
 router.put("/me", authMiddleware, updateMe);
 router.delete("/me", authMiddleware, deleteMe);

@@ -13,7 +13,7 @@ import API, { getSessionUser } from "../api";
 import PostCard from "../components/PostCard";
 import SoundManager from "../utils/SoundManager";
 
-const Search = ({ onLogout, onNavigate, onStartPrivateChat, theme, isDarkMode }) => {
+const Search = ({ onLogout, onNavigate, onStartPrivateChat, onShowUserModal, theme, isDarkMode }) => {
   const [searchTab, setSearchTab] = useState("posts"); 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -126,6 +126,18 @@ const Search = ({ onLogout, onNavigate, onStartPrivateChat, theme, isDarkMode })
     } catch (err) {
       SoundManager.error();
       Alert.alert("Error", err.response?.data?.message || "Action failed.");
+    }
+  };
+
+  const handleCancelJoinRequest = async (group) => {
+    try {
+      const response = await API.post(`/groups/${group._id}/cancel-request`);
+      SoundManager.unlike();
+      Alert.alert("Request Cancelled", response.data.message);
+      handleGroupSearch();
+    } catch (err) {
+      SoundManager.error();
+      Alert.alert("Error", err.response?.data?.message || "Failed to cancel request.");
     }
   };
 
@@ -351,6 +363,7 @@ const Search = ({ onLogout, onNavigate, onStartPrivateChat, theme, isDarkMode })
                   onPostDeleted={handlePostDeleted}
                   onStartPrivateChat={onStartPrivateChat}
                   onNavigate={onNavigate}
+                  onShowUserModal={onShowUserModal}
                   theme={colors}
                   isDarkMode={isDarkMode}
                 />
@@ -364,6 +377,9 @@ const Search = ({ onLogout, onNavigate, onStartPrivateChat, theme, isDarkMode })
               groupResults.map((group) => {
                 const isMember = group.members.some(
                   (m) => m._id === currentUser._id || m === currentUser._id
+                );
+                const isPending = group.pendingRequests && group.pendingRequests.some(
+                  (r) => (r._id || r) === currentUser._id
                 );
                 return (
                   <View key={group._id} style={[styles.groupCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
@@ -393,12 +409,21 @@ const Search = ({ onLogout, onNavigate, onStartPrivateChat, theme, isDarkMode })
                         >
                           <Text style={styles.enterRoomBtnText}>Enter 🚪</Text>
                         </TouchableOpacity>
+                      ) : isPending ? (
+                        <TouchableOpacity
+                          style={[styles.joinBtn, { backgroundColor: colors.danger, borderColor: colors.danger }]}
+                          onPress={() => handleCancelJoinRequest(group)}
+                        >
+                          <Text style={[styles.joinBtnText, { color: "#ffffff" }]}>CANCEL REQUEST ❌</Text>
+                        </TouchableOpacity>
                       ) : (
                         <TouchableOpacity
                           style={[styles.joinBtn, { borderColor: colors.primary }]}
                           onPress={() => handleJoinLeaveGroup(group)}
                         >
-                          <Text style={[styles.joinBtnText, { color: colors.primary }]}>Join Room</Text>
+                          <Text style={[styles.joinBtnText, { color: colors.primary }]}>
+                            {group.privacy === "public" ? "Join ✓" : "Request 🔐"}
+                          </Text>
                         </TouchableOpacity>
                       )}
                     </View>

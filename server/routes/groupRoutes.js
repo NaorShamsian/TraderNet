@@ -13,6 +13,7 @@ const {
   removeGroupMember,
   promoteMemberToStaff,
   demoteMemberToListener,
+  cancelJoinRequest,
 } = require("../controllers/groupController");
 const authMiddleware = require("../middleware/authMiddleware");
 
@@ -31,6 +32,7 @@ router.delete("/:id", deleteGroup);
 
 router.post("/:id/join", joinGroup);
 router.post("/:id/leave", leaveGroup);
+router.post("/:id/cancel-request", cancelJoinRequest);
 router.post("/:id/approve/:userId", approveJoinRequest);
 router.post("/:id/reject/:userId", rejectJoinRequest);
 router.post("/:id/remove/:userId", removeGroupMember);
@@ -38,3 +40,4 @@ router.post("/:id/promote/:userId", promoteMemberToStaff);
 router.post("/:id/demote/:userId", demoteMemberToListener);
 
 module.exports = router;
+

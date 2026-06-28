@@ -16,11 +16,37 @@ import CreatePost from "../components/CreatePost";
 import PostCard from "../components/PostCard";
 import SoundManager from "../utils/SoundManager";
 
-const Feed = ({ onLogout, onNavigate, onStartPrivateChat, theme, isDarkMode, initialTagFilter, onClearTagFilter, incomingRequests, friendRequestsCount }) => {
+const Feed = ({ onLogout, onNavigate, onStartPrivateChat, onShowUserModal, theme, isDarkMode, initialTagFilter, onClearTagFilter, incomingRequests, friendRequestsCount, homeEvents = [], onDismissEvent, digestChecked, onMarkDigestChecked }) => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+
+  const [digestModalVisible, setDigestModalVisible] = useState(false);
+  const [digestData, setDigestData] = useState(null);
+
+  useEffect(() => {
+    const checkWelcomeDigest = async () => {
+      if (digestChecked) return;
+      try {
+        const response = await API.get("/users/me/digest");
+        const data = response.data;
+        const hasMessages = data.newMessages && data.newMessages.length > 0;
+        const hasLogs = data.logs && data.logs.length > 0;
+        const hasFriendRequests = data.pendingFriendRequestsCount > 0;
+        const hasJoinRequests = data.pendingJoinRequestsCount > 0;
+
+        if (hasMessages || hasLogs || hasFriendRequests || hasJoinRequests) {
+          setDigestData(data);
+          setDigestModalVisible(true);
+          onMarkDigestChecked && onMarkDigestChecked();
+        }
+      } catch (err) {
+        console.error("Failed to load welcome digest", err);
+      }
+    };
+    checkWelcomeDigest();
+  }, [digestChecked]);
 
   const [feedFilter, setFeedFilter] = useState("global"); 
   const [myJoinedGroupIds, setMyJoinedGroupIds] = useState([]);
@@ -216,6 +242,41 @@ const Feed = ({ onLogout, onNavigate, onStartPrivateChat, theme, isDarkMode, ini
           </TouchableOpacity>
         )}
 
+        {/* Real-time Home Events (Staff promotion, connections approved) */}
+        {homeEvents && homeEvents.map((event) => (
+          <View
+            key={event.id}
+            style={[
+              styles.friendRequestHintCard,
+              {
+                borderColor: event.color === "success" ? colors.success : colors.primary,
+                backgroundColor: event.color === "success" 
+                  ? (isDarkMode ? "rgba(16, 185, 129, 0.12)" : "rgba(16, 185, 129, 0.05)")
+                  : (isDarkMode ? "rgba(99, 102, 241, 0.12)" : "rgba(99, 102, 241, 0.05)"),
+                marginBottom: 10,
+              }
+            ]}
+          >
+            <TouchableOpacity
+              style={styles.hintCardLeft}
+              onPress={() => onNavigate(event.targetScreen, event.param)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.hintCardIcon}>{event.type === "staff_promoted" ? "🛡️" : "🤝"}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.hintCardTitle, { color: colors.text }]}>{event.title}</Text>
+                <Text style={[styles.hintCardSubtitle, { color: colors.subText }]}>{event.body}</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.dismissEventBtn}
+              onPress={() => onDismissEvent && onDismissEvent(event.id)}
+            >
+              <Text style={[styles.dismissEventBtnText, { color: colors.subText }]}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+
         {/* Feed Segment Filter Toggle */}
         <View style={[styles.segmentContainer, { backgroundColor: isDarkMode ? "rgba(21, 28, 44, 0.6)" : "#f1f5f9", borderColor: colors.border }]}>
           <TouchableOpacity
@@ -400,6 +461,7 @@ const Feed = ({ onLogout, onNavigate, onStartPrivateChat, theme, isDarkMode, ini
               onPostDeleted={handlePostDeleted}
               onStartPrivateChat={onStartPrivateChat}
               onNavigate={onNavigate}
+              onShowUserModal={onShowUserModal}
               onTagPress={handleTagPress}
               theme={colors}
               isDarkMode={isDarkMode}
@@ -468,6 +530,121 @@ const Feed = ({ onLogout, onNavigate, onStartPrivateChat, theme, isDarkMode, ini
           </View>
         </View>
       </Modal>
+
+      {/* Welcome Digest Modal */}
+      {digestData && (
+        <Modal
+          visible={digestModalVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setDigestModalVisible(false)}
+        >
+          <TouchableOpacity
+            style={styles.digestOverlay}
+            activeOpacity={1}
+            onPress={() => setDigestModalVisible(false)}
+          >
+            <TouchableOpacity
+              style={[styles.digestContainer, { backgroundColor: colors.cardBg, borderColor: colors.border }]}
+              activeOpacity={1}
+              onPress={() => {}}
+            >
+              {/* Header */}
+              <View style={styles.digestHeader}>
+                <Text style={styles.digestBadge}>UPDATES 📊</Text>
+                <Text style={[styles.digestTitle, { color: colors.text }]}>Welcome Back! 📈</Text>
+                <Text style={[styles.digestSubtitle, { color: colors.subText }]}>
+                  Here is what happened since your last session:
+                </Text>
+              </View>
+
+              <ScrollView style={styles.digestScroll} contentContainerStyle={{ gap: 14 }}>
+                {/* Unread private messages */}
+                {digestData.newMessages && digestData.newMessages.length > 0 && (
+                  <View style={styles.digestSection}>
+                    <Text style={[styles.sectionHeading, { color: colors.primary }]}>✉️ New Messages</Text>
+                    {digestData.newMessages.map((msg, i) => (
+                      <TouchableOpacity
+                        key={i}
+                        style={[styles.digestItem, { backgroundColor: colors.inputBg }]}
+                        onPress={() => {
+                          setDigestModalVisible(false);
+                          onNavigate("DMsList");
+                        }}
+                      >
+                        <Text style={[styles.digestItemTitle, { color: colors.text }]}>
+                          @{msg.senderUsername}
+                        </Text>
+                        <Text style={[styles.digestItemBody, { color: colors.subText }]} numberOfLines={1}>
+                          {msg.lastMessageText}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
+                {/* Connection requests count */}
+                {digestData.pendingFriendRequestsCount > 0 && (
+                  <TouchableOpacity
+                    style={[styles.digestSection, styles.digestAlertItem, { borderColor: colors.success, backgroundColor: "rgba(16, 185, 129, 0.05)" }]}
+                    onPress={() => {
+                      setDigestModalVisible(false);
+                      onNavigate("Profile");
+                    }}
+                  >
+                    <Text style={[styles.alertHeading, { color: colors.success }]}>👥 Connection Requests</Text>
+                    <Text style={[styles.digestItemBody, { color: colors.text, marginTop: 2 }]}>
+                      You have {digestData.pendingFriendRequestsCount} new connection request(s) waiting for approval.
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* Group Join requests count */}
+                {digestData.pendingJoinRequestsCount > 0 && (
+                  <TouchableOpacity
+                    style={[styles.digestSection, styles.digestAlertItem, { borderColor: colors.warning, backgroundColor: "rgba(245, 158, 11, 0.05)" }]}
+                    onPress={() => {
+                      setDigestModalVisible(false);
+                      onNavigate("GroupsList");
+                    }}
+                  >
+                    <Text style={[styles.alertHeading, { color: colors.warning }]}>⏳ Group Moderation</Text>
+                    <Text style={[styles.digestItemBody, { color: colors.text, marginTop: 2 }]}>
+                      There are {digestData.pendingJoinRequestsCount} pending join requests in groups you manage.
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* Group activity logs */}
+                {digestData.logs && digestData.logs.length > 0 && (
+                  <View style={styles.digestSection}>
+                    <Text style={[styles.sectionHeading, { color: colors.primary }]}>🏃‍♂️ Group Activity</Text>
+                    {digestData.logs.map((log, i) => (
+                      <View key={i} style={[styles.digestItem, { backgroundColor: colors.inputBg }]}>
+                        <Text style={[styles.digestItemBody, { color: colors.text }]}>
+                          <Text style={{ fontWeight: "800" }}>@{log.username}</Text>{" "}
+                          {log.action === "left" ? "left" : log.action === "joined" ? "joined" : log.action === "promoted" ? "was promoted to Staff in" : "was demoted in"}{" "}
+                          <Text style={{ color: colors.primary, fontWeight: "700" }}>{log.groupName}</Text>
+                        </Text>
+                        <Text style={[styles.logTime, { color: colors.subText }]}>
+                          {new Date(log.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </ScrollView>
+
+              <TouchableOpacity
+                style={[styles.digestCloseBtn, { backgroundColor: colors.primary }]}
+                onPress={() => setDigestModalVisible(false)}
+              >
+                <Text style={styles.digestCloseBtnText}>Great, let's go! 🚀</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+      )}
     </View>
   );
 };
@@ -718,6 +895,116 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "bold",
     marginLeft: 8,
+  },
+  dismissEventBtn: {
+    padding: 6,
+    marginLeft: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dismissEventBtnText: {
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  digestOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(11, 15, 25, 0.75)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  digestContainer: {
+    width: "100%",
+    maxWidth: 380,
+    maxHeight: "80%",
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
+    elevation: 10,
+  },
+  digestHeader: {
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  digestBadge: {
+    fontSize: 9,
+    fontWeight: "800",
+    color: "#ffffff",
+    backgroundColor: "#ec4899",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    letterSpacing: 0.5,
+    overflow: "hidden",
+    marginBottom: 8,
+  },
+  digestTitle: {
+    fontSize: 19,
+    fontWeight: "800",
+  },
+  digestSubtitle: {
+    fontSize: 12,
+    marginTop: 4,
+    textAlign: "center",
+  },
+  digestScroll: {
+    flexGrow: 0,
+    marginBottom: 20,
+  },
+  digestSection: {
+    width: "100%",
+  },
+  sectionHeading: {
+    fontSize: 11,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    marginBottom: 6,
+  },
+  alertHeading: {
+    fontSize: 11,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+  digestItem: {
+    width: "100%",
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 6,
+  },
+  digestItemTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  digestItemBody: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  digestAlertItem: {
+    borderWidth: 1.5,
+    borderRadius: 14,
+    padding: 12,
+  },
+  logTime: {
+    fontSize: 9,
+    marginTop: 4,
+  },
+  digestCloseBtn: {
+    width: "100%",
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  digestCloseBtnText: {
+    color: "#ffffff",
+    fontSize: 13,
+    fontWeight: "800",
   },
 });
 

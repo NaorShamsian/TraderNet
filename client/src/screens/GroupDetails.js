@@ -19,7 +19,7 @@ import CreatePost from "../components/CreatePost";
 import PostCard from "../components/PostCard";
 import SoundManager from "../utils/SoundManager";
 
-const GroupDetails = ({ groupId, onLogout, onNavigate, onStartPrivateChat, theme, isDarkMode }) => {
+const GroupDetails = ({ groupId, onLogout, onNavigate, onStartPrivateChat, onShowUserModal, theme, isDarkMode }) => {
   const colors = theme || {
     bg: "#f8fafc",
     cardBg: "#ffffff",
@@ -361,8 +361,10 @@ const GroupDetails = ({ groupId, onLogout, onNavigate, onStartPrivateChat, theme
             <Text style={[styles.membersListLabel, { color: colors.text }]}>Members ({group.members.length}):</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.membersScroll}>
               {group.members.map((m) => {
-                const isTargetOwner = m._id === (group.admin?._id || group.admin) || m._id === (group.creator?._id || group.creator);
-                const isTargetStaff = group.staff && group.staff.some((s) => (s._id || s) === m._id);
+                const isTargetOwner =
+                  (m._id || m).toString() === (group.admin?._id || group.admin || "").toString() ||
+                  (m._id || m).toString() === (group.creator?._id || group.creator || "").toString();
+                const isTargetStaff = group.staff && group.staff.some((s) => (s._id || s).toString() === (m._id || m).toString());
                 const roleLabel = isTargetOwner ? "Owner 👑" : isTargetStaff ? "Staff 🎖️" : "Listener 👤";
 
                 return (
@@ -377,43 +379,15 @@ const GroupDetails = ({ groupId, onLogout, onNavigate, onStartPrivateChat, theme
                       }
 
                       const isTargetAdmin = m._id === (group.admin?._id || group.admin) || m._id === (group.creator?._id || group.creator);
+                      
+                      const groupCtx = isAdmin && !isTargetAdmin ? {
+                        groupId: group._id,
+                        isAdmin: true,
+                        staff: group.staff,
+                        onRefresh: fetchData
+                      } : null;
 
-                      if (isAdmin && !isTargetAdmin) {
-                        const isTargetStaff = group.staff && group.staff.some((s) => (s._id || s) === m._id);
-
-                        Alert.alert(
-                          "Member Options",
-                          `What would you like to do with @${m.username}?`,
-                          [
-                            { text: "Cancel", style: "cancel" },
-                            {
-                              text: "Start Chat 💬",
-                              onPress: () => onStartPrivateChat && onStartPrivateChat(m),
-                            },
-                            {
-                              text: isTargetStaff ? "Demote to Listener 👤" : "Promote to Staff 🎖️",
-                              onPress: () => isTargetStaff ? handleDemoteMember(m) : handlePromoteMember(m),
-                            },
-                            {
-                              text: "Remove from Group ❌",
-                              style: "destructive",
-                              onPress: () => handleRemoveMember(m),
-                            },
-                          ]
-                        );
-                      } else {
-                        Alert.alert(
-                          "Direct Message",
-                          `Start a private chat with @${m.username}?`,
-                          [
-                            { text: "Cancel", style: "cancel" },
-                            {
-                              text: "Start Chat 💬",
-                              onPress: () => onStartPrivateChat && onStartPrivateChat(m),
-                            },
-                          ]
-                        );
-                      }
+                      onShowUserModal && onShowUserModal(m, groupCtx);
                     }}
                   >
                     <Text style={[styles.memberText, { color: colors.text }]}>
@@ -512,6 +486,7 @@ const GroupDetails = ({ groupId, onLogout, onNavigate, onStartPrivateChat, theme
                 onPostDeleted={handlePostDeleted}
                 onStartPrivateChat={onStartPrivateChat}
                 onNavigate={onNavigate}
+                onShowUserModal={onShowUserModal}
                 theme={colors}
                 isDarkMode={isDarkMode}
               />

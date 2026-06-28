@@ -13,7 +13,7 @@ import {
 import API, { getSessionUser } from "../api";
 import SoundManager from "../utils/SoundManager";
 
-const PostCard = ({ post, onPostUpdated, onEditPress, onPostDeleted, onStartPrivateChat, onNavigate, onTagPress, theme, isDarkMode }) => {
+const PostCard = ({ post, onPostUpdated, onEditPress, onPostDeleted, onStartPrivateChat, onNavigate, onShowUserModal, onTagPress, theme, isDarkMode }) => {
   const [commentText, setCommentText] = useState("");
   const [commentLoading, setCommentLoading] = useState(false);
   const [commentError, setCommentError] = useState("");
@@ -144,17 +144,7 @@ const PostCard = ({ post, onPostUpdated, onEditPress, onPostDeleted, onStartPriv
               onNavigate && onNavigate("Profile");
               return;
             }
-            Alert.alert(
-              "Direct Message",
-              `Start a private chat with @${post.user.username}?`,
-              [
-                { text: "Cancel", style: "cancel" },
-                {
-                  text: "Start Chat 💬",
-                  onPress: () => onStartPrivateChat && onStartPrivateChat(post.user),
-                },
-              ]
-            );
+            onShowUserModal && onShowUserModal(post.user);
           }}
           disabled={!post.user}
         >
@@ -303,17 +293,7 @@ const PostCard = ({ post, onPostUpdated, onEditPress, onPostDeleted, onStartPriv
                       onNavigate && onNavigate("Profile");
                       return;
                     }
-                    Alert.alert(
-                      "Direct Message",
-                      `Start a private chat with @${comment.user.username}?`,
-                      [
-                        { text: "Cancel", style: "cancel" },
-                        {
-                          text: "Start Chat 💬",
-                          onPress: () => onStartPrivateChat && onStartPrivateChat(comment.user),
-                        },
-                      ]
-                    );
+                    onShowUserModal && onShowUserModal(comment.user);
                   }}
                   disabled={!comment.user}
                 >

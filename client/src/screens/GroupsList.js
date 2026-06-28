@@ -14,7 +14,7 @@ import {
 import API, { getSessionUser } from "../api";
 import SoundManager from "../utils/SoundManager";
 
-const GroupsList = ({ onLogout, onNavigate, onStartPrivateChat, theme, isDarkMode }) => {
+const GroupsList = ({ onLogout, onNavigate, onStartPrivateChat, onShowUserModal, theme, isDarkMode }) => {
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -172,6 +172,18 @@ const GroupsList = ({ onLogout, onNavigate, onStartPrivateChat, theme, isDarkMod
     }
   };
 
+  const handleCancelJoinRequest = async (group) => {
+    try {
+      const response = await API.post(`/groups/${group._id}/cancel-request`);
+      SoundManager.unlike();
+      Alert.alert("Request Cancelled", response.data.message);
+      fetchGroups();
+    } catch (err) {
+      SoundManager.error();
+      Alert.alert("Error", err.response?.data?.message || "Failed to cancel request.");
+    }
+  };
+
   const joinedGroups = groups.filter((g) =>
     g.members.some((m) => m._id === currentUser._id || m === currentUser._id)
   );
@@ -223,17 +235,7 @@ const GroupsList = ({ onLogout, onNavigate, onStartPrivateChat, theme, isDarkMod
                   onNavigate && onNavigate("Profile");
                   return;
                 }
-                Alert.alert(
-                  "Direct Message",
-                  `Start a private chat with @${group.admin.username}?`,
-                  [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                      text: "Start Chat 💬",
-                      onPress: () => onStartPrivateChat && onStartPrivateChat(group.admin),
-                    },
-                  ]
-                );
+                onShowUserModal && onShowUserModal(group.admin);
               }}
             >
               <Text style={styles.adminMemberName}>@{group.admin.username || "admin"}</Text>
@@ -254,17 +256,7 @@ const GroupsList = ({ onLogout, onNavigate, onStartPrivateChat, theme, isDarkMod
                       onNavigate && onNavigate("Profile");
                       return;
                     }
-                    Alert.alert(
-                      "Direct Message",
-                      `Start a private chat with @${member.username}?`,
-                      [
-                        { text: "Cancel", style: "cancel" },
-                        {
-                          text: "Start Chat 💬",
-                          onPress: () => onStartPrivateChat && onStartPrivateChat(member),
-                        },
-                      ]
-                    );
+                    onShowUserModal && onShowUserModal(member);
                   }}
                 >
                   <Text style={styles.memberPreviewName}>@{member.username || "user"} </Text>
@@ -306,10 +298,10 @@ const GroupsList = ({ onLogout, onNavigate, onStartPrivateChat, theme, isDarkMod
             <>
               {isPending ? (
                 <TouchableOpacity
-                  style={[styles.actionBtn, styles.actionBtnPending, { borderColor: colors.warning }]}
-                  disabled={true}
+                  style={[styles.actionBtn, { backgroundColor: colors.danger, borderColor: colors.danger }]}
+                  onPress={() => handleCancelJoinRequest(group)}
                 >
-                  <Text style={[styles.actionBtnPendingText, { color: colors.warning }]}>Pending ⏳</Text>
+                  <Text style={{ color: "#ffffff", fontSize: 11, fontWeight: "700" }}>CANCEL REQUEST ❌</Text>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity

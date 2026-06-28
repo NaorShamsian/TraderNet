@@ -12,7 +12,7 @@ import {
 import API, { getSessionUser } from "../api";
 import SoundManager from "../utils/SoundManager";
 
-const UsersList = ({ onLogout, onNavigate, onStartPrivateChat, theme, isDarkMode }) => {
+const UsersList = ({ onLogout, onNavigate, onStartPrivateChat, onShowUserModal, theme, isDarkMode }) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -245,17 +245,7 @@ const UsersList = ({ onLogout, onNavigate, onStartPrivateChat, theme, isDarkMode
                       style={{ flex: 1, flexDirection: "row", alignItems: "center" }}
                       onPress={() => {
                         if (isSelf) return;
-                        Alert.alert(
-                          "Direct Message",
-                          `Start a private chat with @${user.username}?`,
-                          [
-                            { text: "Cancel", style: "cancel" },
-                            {
-                              text: "Start Chat 💬",
-                              onPress: () => onStartPrivateChat && onStartPrivateChat(user),
-                            },
-                          ]
-                        );
+                        onShowUserModal && onShowUserModal(user);
                       }}
                       disabled={isSelf}
                     >
