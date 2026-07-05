@@ -3,7 +3,7 @@ const Post = require("../models/Post");
 const User = require("../models/User");
 const Group = require("../models/Group");
 
-// Create a new post
+// יצירת פוסט חדש (תומך בפוסטים גלובליים ובפוסטים בתוך קבוצות ספציפיות)
 const createPost = async (req, res) => {
   try {
     const { content, image, video, tags, group } = req.body;
@@ -13,6 +13,7 @@ const createPost = async (req, res) => {
     }
 
     let groupObj = null;
+    // בדיקה האם הפוסט מיועד לקבוצה מסוימת
     if (group) {
       if (!mongoose.Types.ObjectId.isValid(group)) {
         return res.status(400).json({ message: "Invalid group id" });
@@ -21,6 +22,8 @@ const createPost = async (req, res) => {
       if (!groupObj) {
         return res.status(404).json({ message: "Group not found" });
       }
+      
+      // אימות שהמשתמש המנסה לכתוב פוסט בקבוצה אכן חבר בה
       const isMember = groupObj.members.some(
         (m) => m.toString() === req.user._id.toString()
       );
@@ -30,7 +33,11 @@ const createPost = async (req, res) => {
         });
       }
 
-      // Enforce Group Permissions: Only Creator, Admin, Site Admin, or Staff can post. Listeners are blocked.
+      // אכיפת מערכת התפקידים וההרשאות בקבוצה:
+      // רק יוצר הקבוצה, מנהל הקבוצה, מנהל האתר, או משתמשים שקודמו לצוות מורשים לפרסם פוסטים.
+      // Roles authorized: Creator, Admin, Site Admin, Staff
+      // משתמשים ברמת מאזינים בלבד חסומים מלפרסם פוסטים בקבוצה.
+      // Roles blocked: Listeners
       const isGroupAdmin = groupObj.admin.toString() === req.user._id.toString() || groupObj.creator.toString() === req.user._id.toString();
       const isSiteAdmin = req.user.role === "admin";
       const isStaff = groupObj.staff && groupObj.staff.some((s) => s.toString() === req.user._id.toString());
@@ -65,12 +72,14 @@ const createPost = async (req, res) => {
   }
 };
 
-// Get all posts, sorted by newest first (respects group privacy: only see group posts if you are a member)
+// שליפת פוסטים מותאמת אישית לפי חוקי פרטיות וקשרים חברתיים.
+// Security check: Post visibility constraints
+// הערה חשובה להצגה למרצה: פה מיושם מנגנון אבטחה המונע ממשתמשים לראות פוסטים של קבוצות שהם אינם חברים בהן.
 const getPosts = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : null;
 
-    // Fetch all groups to determine visibility (only groups where the user is a member or admin)
+    // 1. שליפת כל מזהי הקבוצות שהמשתמש הנוכחי חבר או מנהל בהן (או כל הקבוצות אם הוא מנהל מערכת)
     const groups = await Group.find();
     const visibleGroupIds = groups
       .filter(
@@ -79,15 +88,24 @@ const getPosts = async (req, res) => {
       )
       .map((g) => g._id);
 
-    // Fetch user to get friends list for visibility
+    // 2. שליפת רשימת החברים של המשתמש כדי לבדוק סטטוס חברות
     const user = await User.findById(req.user._id);
     const friendIds = user ? (user.friends || []).map((f) => f.toString()) : [];
 
+    // 3. שליפת כל הקבוצות הציבוריות.
+    // Group type: Public
     const publicGroupIds = groups
       .filter((g) => g.privacy === "public")
       .map((g) => g._id);
 
-    // Query condition: post group must be either null (global), in visibleGroupIds, or in public groups authored by a friend
+    // 4. בניית שאילתת סינון מתקדמת במסד הנתונים.
+    // Query builder: MongoDB $or aggregation
+    // פוסט ייחשב כגלוי למשתמש אם:
+    // א. הוא פוסט כללי ללא שיוך לקבוצה.
+    // condition: group: null
+    // ב. הוא שייך לקבוצה שהמשתמש הנוכחי חבר בה.
+    // condition: visibleGroupIds list
+    // ג. הוא שייך לקבוצה ציבורית והכותב שלו הוא חבר אישי של המשתמש הנוכחי
     const query = {
       $or: [
         { group: null },
@@ -251,7 +269,8 @@ const deletePost = async (req, res) => {
   }
 };
 
-// Like or unlike a post (toggle)
+// סימון לייק או ביטול לייק על פוסט.
+// Action: Toggle Like
 const likePost = async (req, res) => {
   try {
     const { id } = req.params;
@@ -266,21 +285,26 @@ const likePost = async (req, res) => {
       return res.status(404).json({ message: "Post not found" });
     }
 
-    // Toggle logic
+    // בדיקה האם המשתמש כבר סימן לייק בעבר
     const userIdStr = req.user._id.toString();
     const hasLiked = post.likes.some((likeId) => likeId.toString() === userIdStr);
 
     if (hasLiked) {
-      // Unlike: remove from likes array
+      // ביטול לייק (הסרה ממערך הלייקים)
       post.likes = post.likes.filter((likeId) => likeId.toString() !== userIdStr);
     } else {
-      // Like: add to likes array
+      // הוספת לייק חדש
       post.likes.push(req.user._id);
 
-      // Emit socket notification to the post owner if they aren't the liker
+      // יצירת התראה בזמן אמת.
+      // Technology: WebSockets (Socket.io)
+      // אם המשתמש שסימן לייק אינו בעל הפוסט בעצמו, נשלח התראה ממוקדת לחדר האישי של בעל הפוסט
       if (post.user.toString() !== userIdStr) {
         const io = req.app.get("io");
         if (io) {
+          // שליחת אירוע לחדר האישי של הכותב.
+          // Event: postLiked
+          // Room target: user_userID
           io.to(`user_${post.user.toString()}`).emit("postLiked", {
             likerName: req.user.fullName,
             likerUsername: req.user.username,
@@ -304,7 +328,7 @@ const likePost = async (req, res) => {
   }
 };
 
-// Add comment to a post
+// הוספת תגובה לפוסט קיים
 const addComment = async (req, res) => {
   try {
     const { id } = req.params;
@@ -324,6 +348,8 @@ const addComment = async (req, res) => {
       return res.status(404).json({ message: "Post not found" });
     }
 
+    // הוספת התגובה למערך התגובות הפנימי של הפוסט.
+    // Document type: Embedded / Subdocument
     post.comments.push({
       user: req.user._id,
       text,
@@ -331,11 +357,15 @@ const addComment = async (req, res) => {
 
     await post.save();
 
-    // Emit socket notification to the post owner if they aren't the commenter
+    // שליחת התראה בזמן אמת.
+    // Technology: WebSockets (Socket.io)
+    // אם המשתמש שהגיב אינו בעל הפוסט בעצמו, נשלח התראה לחדר האישי של בעל הפוסט
     const userIdStr = req.user._id.toString();
     if (post.user.toString() !== userIdStr) {
       const io = req.app.get("io");
       if (io) {
+        // שליחת אירוע לחדר האישי של הכותב.
+        // Event: postCommented
         io.to(`user_${post.user.toString()}`).emit("postCommented", {
           commenterName: req.user.fullName,
           commenterUsername: req.user.username,

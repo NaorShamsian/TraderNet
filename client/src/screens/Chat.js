@@ -38,7 +38,9 @@ const Chat = ({ onLogout, onNavigate, theme, isDarkMode }) => {
   };
 
   useEffect(() => {
-    // 1. Fetch historical chat messages from DB
+    // 1. שליפת היסטוריית ההודעות של הצ'אט הגלובלי ממסד הנתונים דרך קריאת רשת רגילה.
+    // Protocol: HTTP REST
+    // פעולה זו מתבצעת פעם אחת בלבד עם עליית המסך כדי לטעון הודעות קודמות.
     const fetchHistory = async () => {
       try {
         const response = await API.get("/chat");
@@ -56,16 +58,23 @@ const Chat = ({ onLogout, onNavigate, theme, isDarkMode }) => {
 
     fetchHistory();
 
-    // 2. Establish live Socket.io connection
+    // 2. יצירת חיבור ישיר לשרת לטובת עדכונים בזמן אמת.
+    // Protocol: WebSockets (Socket.io)
     const socket = io(BASE_SOCKET_URL);
     socketRef.current = socket;
 
+    // הצטרפות לחדר הצ'אט הכללי לאחר התחברות מוצלחת.
+    // Action: joinGlobal
     socket.on("connect", () => {
       socket.emit("joinGlobal");
     });
 
+    // האזנה לקבלת הודעה חדשה בזמן אמת.
+    // כאשר משתמש אחר שולח הודעה, השרת מפיץ אותה לחדר הכללי והאירוע הזה מופעל אצל כל שאר המשתמשים.
     socket.on("newMessage", (message) => {
       setMessages((prevMessages) => [...prevMessages, message]);
+      // אם ההודעה התקבלה ממשתמש אחר, נשמיע צליל ייעודי.
+      // Sound effect: SoundManager
       if (message.sender && (message.sender._id !== currentUser._id && message.sender !== currentUser._id)) {
         SoundManager.orderFilled();
       }
@@ -74,6 +83,9 @@ const Chat = ({ onLogout, onNavigate, theme, isDarkMode }) => {
       }, 50);
     });
 
+    // האזנה לאירוע מחיקת הודעה בזמן אמת.
+    // אם מנהל מערכת מחק הודעה, השרת מעדכן את כולם ומסיר אותה מהרשימה המקומית.
+    // Authorization: Admin
     socket.on("messageDeleted", (deletedId) => {
       setMessages((prevMessages) => prevMessages.filter((m) => m._id !== deletedId));
       SoundManager.unlike();
@@ -83,6 +95,8 @@ const Chat = ({ onLogout, onNavigate, theme, isDarkMode }) => {
       setError("Socket connection failed. Real-time features offline.");
     });
 
+    // ניקוי וניתוק החיבור בעת עזיבת המסך כדי למנוע דליפות זיכרון.
+    // Lifecycle: Cleanup (Unmount)
     return () => {
       if (socket) {
         socket.disconnect();
@@ -90,11 +104,16 @@ const Chat = ({ onLogout, onNavigate, theme, isDarkMode }) => {
     };
   }, []);
 
+  // פונקציה לשליחת הודעה חדשה.
+  // ההודעה אינה נשלחת בקריאת רשת רגילה, אלא נשלחת כאירוע ישיר דרך ערוץ פתוח.
+  // Communication: Socket.io Emit
   const handleSendMessage = () => {
     if (!inputText.trim()) return;
 
     if (socketRef.current && socketRef.current.connected) {
       SoundManager.sendMessage();
+      // שליחת אירוע לשרת עם מזהה השולח ותוכן ההודעה.
+      // Event: sendMessage
       socketRef.current.emit("sendMessage", {
         senderId: currentUser._id,
         text: inputText.trim(),
@@ -106,6 +125,8 @@ const Chat = ({ onLogout, onNavigate, theme, isDarkMode }) => {
     }
   };
 
+  // פונקציה למחיקת הודעה (רק עבור משתמשים מורשים).
+  // Authorization: Admin
   const handleDeleteMessage = (messageId) => {
     if (!messageId) return;
     Alert.alert(
@@ -118,6 +139,8 @@ const Chat = ({ onLogout, onNavigate, theme, isDarkMode }) => {
           style: "destructive",
           onPress: () => {
             if (socketRef.current && socketRef.current.connected) {
+              // שליחת אירוע מחיקה לשרת.
+              // Event: deleteMessage
               socketRef.current.emit("deleteMessage", {
                 messageId,
                 adminUserId: currentUser._id,

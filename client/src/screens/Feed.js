@@ -25,6 +25,8 @@ const Feed = ({ onLogout, onNavigate, onStartPrivateChat, onShowUserModal, theme
   const [digestModalVisible, setDigestModalVisible] = useState(false);
   const [digestData, setDigestData] = useState(null);
 
+  // מנגנון תקציר חדשות: בודק ומציג חלון קופץ עם עדכונים שהתרחשו מאז שהמשתמש היה מחובר לאחרונה.
+  // העדכונים כוללים: הודעות שלא נקראו, בקשות חברות ממתינות, בקשות הצטרפות לקבוצות שהוא מנהל, ויומן פעילות קבוצתי.
   useEffect(() => {
     const checkWelcomeDigest = async () => {
       if (digestChecked) return;
@@ -51,7 +53,7 @@ const Feed = ({ onLogout, onNavigate, onStartPrivateChat, onShowUserModal, theme
   const [feedFilter, setFeedFilter] = useState("global"); 
   const [myJoinedGroupIds, setMyJoinedGroupIds] = useState([]);
 
-  // Collapsible search state
+  // מצבי חיפוש וסינון מתקדמים
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [searchContent, setSearchContent] = useState("");
   const [searchTag, setSearchTag] = useState("");
@@ -60,7 +62,7 @@ const Feed = ({ onLogout, onNavigate, onStartPrivateChat, onShowUserModal, theme
   const [searchUsername, setSearchUsername] = useState("");
   const [isSearching, setIsSearching] = useState(false);
 
-  // Edit post state
+  // מצב עריכת פוסט קיים
   const [editingPost, setEditingPost] = useState(null);
   const [editContent, setEditContent] = useState("");
   const [editTags, setEditTags] = useState("");
@@ -80,6 +82,12 @@ const Feed = ({ onLogout, onNavigate, onStartPrivateChat, onShowUserModal, theme
     accent: "#ec4899",
   };
 
+  // פונקציה לשליפת הפוסטים מהשרת.
+  // הפונקציה מבצעת שתי קריאות במקביל:
+  // 1. שליפת הפוסטים. כולל פוסטים גלובליים ופוסטים מקבוצות בהתאם להרשאות.
+  // Endpoint: GET /posts
+  // 2. שליפת הקבוצות של המשתמש. משמש לסינון פוסטים של קבוצות שהמשתמש חבר בהן.
+  // Endpoint: GET /groups
   const fetchPosts = async () => {
     try {
       const response = await API.get("/posts");
@@ -107,6 +115,8 @@ const Feed = ({ onLogout, onNavigate, onStartPrivateChat, onShowUserModal, theme
     }
   };
 
+  // מאזין לשינוי בפילטר תגית ראשוני.
+  // Initial tag filter listener
   useEffect(() => {
     if (initialTagFilter) {
       setIsSearchExpanded(true);
@@ -120,11 +130,15 @@ const Feed = ({ onLogout, onNavigate, onStartPrivateChat, onShowUserModal, theme
     }
   }, [initialTagFilter]);
 
+  // פונקציה לביצוע רענון ידני באמצעות גרירה מלמעלה.
+  // Action: Pull to Refresh
   const handleRefresh = () => {
     setRefreshing(true);
     fetchPosts();
   };
 
+  // פונקציות עזר לעדכון המצב המקומי לאחר יצירה, עריכה או מחיקה של פוסט.
+  // Local state synchronization
   const handlePostCreated = (newPost) => {
     setPosts((prevPosts) => [newPost, ...prevPosts]);
   };
@@ -139,6 +153,9 @@ const Feed = ({ onLogout, onNavigate, onStartPrivateChat, onShowUserModal, theme
     setPosts((prevPosts) => prevPosts.filter((post) => post._id !== deletedPostId));
   };
 
+  // פונקציה לביצוע חיפוש מתקדם בפיד.
+  // שולחת בקשת שרת למסלול החיפוש ומעבירה פרמטרים כגון תוכן, תגית, טווח תאריכים ושם משתמש.
+  // Method: HTTP GET /posts/search
   const handleSearch = async (tagOverride) => {
     setIsSearching(true);
     setLoading(true);

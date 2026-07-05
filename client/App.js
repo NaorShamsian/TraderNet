@@ -58,8 +58,12 @@ export default function App() {
     SoundManager.preload();
   }, []);
 
-  // Socket listener for live background updates
+  // מאזין חיבור ראשי לקבלת עדכוני רקע בזמן אמת.
+  // Connection type: Socket.io
+  // פונקציה זו רצה בכל פעם שהמשתמש או הטוקן משתנים, או כשהמסך הפעיל משתנה (כדי לקבוע אם להציג התראות).
   useEffect(() => {
+    // אם המשתמש אינו מחובר, ננתק את החיבור אם היה קיים ונאפס את המונים.
+    // Client connection check
     if (!user || !token) {
       if (socketRef.current) {
         socketRef.current.disconnect();
@@ -70,6 +74,8 @@ export default function App() {
       return;
     }
 
+    // שליפה ראשונית של בקשות החברות הממתינות דרך ממשק השרת כדי לאכלס את הממשק בטעינה הראשונה.
+    // Initial fetch via HTTP REST API
     const fetchRequests = async () => {
       try {
         const res = await API.get("/users/friends/requests");
@@ -81,21 +87,29 @@ export default function App() {
     };
     fetchRequests();
 
+    // התחברות לשרת בזמן אמת.
+    // WebSocket server connection
     const socket = io(BASE_SOCKET_URL);
     socketRef.current = socket;
 
+    // עם ההתחברות, נצטרף לחדר אישי של המשתמש בלבד (על פי מזהה המשתמש).
+    // מנגנון זה מאפשר לשרת לשלוח הודעות ממוקדות למשתמש ספציפי (כמו קבלת בקשת חברות או הודעה פרטית)
+    // מבלי להטריד משתמשים אחרים באפליקציה.
     socket.on("connect", () => {
       socket.emit("joinUserRoom", user._id);
     });
 
+    // מאזין לקבלת בקשת חברות חדשה בזמן אמת.
     socket.on("friendRequestReceived", (sender) => {
+      // עדכון מצב ההתראות שיציג באנר קופץ במסך.
+      // Update notification state
       setNotification({
         id: Date.now().toString(),
         title: "👥 New Friend Request",
         body: `@${sender.username} sent you a connection request!`,
         type: "friend_request"
       });
-      SoundManager.joinGroup();
+      SoundManager.joinGroup(); // השמעת צליל מתאים
       setPendingRequestsCount((prev) => prev + 1);
       setIncomingRequests((prev) => {
         if (prev.some((r) => r._id === sender._id)) return prev;
@@ -103,16 +117,20 @@ export default function App() {
       });
     });
 
+    // מאזין למצב שבו השולח ביטל את בקשת החברות ששלח.
     socket.on("friendRequestCancelled", ({ senderId }) => {
       setPendingRequestsCount((prev) => Math.max(0, prev - 1));
       setIncomingRequests((prev) => prev.filter((r) => r._id !== senderId));
     });
 
+    // מאזין לאישור בקשת חברות על ידי משתמש אחר.
     socket.on("friendRequestAccepted", ({ friendId, friendName, friendUsername }) => {
       setPendingRequestsCount((prev) => Math.max(0, prev - 1));
       setIncomingRequests((prev) => prev.filter((r) => r._id !== friendId));
 
       SoundManager.profitTarget();
+      // הוספת אירוע של אישור בקשה ללוח ההתראות המקומי.
+      // Notification type: Connection Approved
       setHomeEvents((prev) => [
         ...prev,
         {
@@ -126,6 +144,8 @@ export default function App() {
       ]);
     });
 
+    // מאזין לקידום המשתמש לרמת צוות בתוך קבוצה מסוימת על ידי מנהל הקבוצה.
+    // Notification type: Appointed to Staff
     socket.on("staffPromoted", ({ groupId, groupName }) => {
       SoundManager.profitTarget();
       setHomeEvents((prev) => [
@@ -142,11 +162,13 @@ export default function App() {
       ]);
     });
 
+    // מאזין לדחיית בקשת חברות.
     socket.on("friendRequestRejected", ({ rejecterId }) => {
       setPendingRequestsCount((prev) => Math.max(0, prev - 1));
       setIncomingRequests((prev) => prev.filter((r) => r._id !== rejecterId));
     });
 
+    // מאזין לקבלת לייק על פוסט של המשתמש.
     socket.on("postLiked", ({ likerName, likerUsername, postId, postContent }) => {
       setNotification({
         id: Date.now().toString(),
@@ -157,6 +179,7 @@ export default function App() {
       SoundManager.joinGroup();
     });
 
+    // מאזין לקבלת תגובה חדשה על פוסט של המשתמש.
     socket.on("postCommented", ({ commenterName, commenterUsername, postId, commentText, postContent }) => {
       setNotification({
         id: Date.now().toString(),
@@ -167,10 +190,16 @@ export default function App() {
       SoundManager.joinGroup();
     });
 
+    // מאזין לעדכוני שיחות צ'אט פרטיות בזמן אמת.
+    // מאפשר לעדכן את רשימת השיחות הכללית מבלי שהמשתמש יהיה בתוך הצ'אט עצמו.
+    // Live update for: DM Chat List (WhatsApp-style)
     socket.on("conversationUpdate", (updatedConv) => {
       const isSending = updatedConv.lastMessageSender === user._id;
+      // אם ההודעה התקבלה ממשתמש אחר (לא הודעה שהשולח הנוכחי יצר):
       if (!isSending) {
         SoundManager.orderFilled();
+        // נבדוק האם המשתמש כבר נמצא בתוך מסך הצ'אט הפרטי עם אותו שותף.
+        // אם הוא כבר שם - אין צורך להציג התראת רקע פנימית.
         const isOnChat = currentScreen === "PrivateChat" && selectedConvId === updatedConv._id;
         if (!isOnChat) {
           const otherParticipant = updatedConv.participants?.find((p) => p._id !== user._id);
@@ -185,6 +214,7 @@ export default function App() {
       }
     });
 
+    // ניקוי החיבור והסרת המאזינים בעת ניתוק/שינוי משתמש
     return () => {
       if (socket) {
         socket.disconnect();
